@@ -49,9 +49,9 @@ orderRouter.get('/customer/:phone', (req: Request, res: Response) => {
 });
 
 // Order creation - Recalculates official prices
-orderRouter.post('/', (req: Request, res: Response) => {
+orderRouter.post('/', async (req: Request, res: Response) => {
   try {
-    const created = foodDb.createOrder(req.body);
+    const created = await foodDb.createOrder(req.body);
     res.status(201).json(created);
   } catch (e: any) {
     res.status(400).json({ error: e.message || 'Gagal membuat pesanan.' });
@@ -59,7 +59,7 @@ orderRouter.post('/', (req: Request, res: Response) => {
 });
 
 // Order status/details update
-orderRouter.put('/:id', (req: Request, res: Response) => {
+orderRouter.put('/:id', async (req: Request, res: Response) => {
   const user = req.user;
   const currentOrder = foodDb.getOrderById(req.params.id);
   if (!currentOrder) {
@@ -96,7 +96,7 @@ orderRouter.put('/:id', (req: Request, res: Response) => {
     }
 
     try {
-      const updated = foodDb.updateOrder(
+      const updated = await foodDb.updateOrder(
         'CUSTOMER',
         req.params.id,
         {
@@ -188,7 +188,7 @@ orderRouter.put('/:id', (req: Request, res: Response) => {
   }
 
   try {
-    const updated = foodDb.updateOrder(
+    const updated = await foodDb.updateOrder(
       user.userId || user.entityId || 'system',
       req.params.id,
       updates,
@@ -201,13 +201,13 @@ orderRouter.put('/:id', (req: Request, res: Response) => {
 });
 
 // Admin manual driver assignment
-orderRouter.post('/:id/assign-driver', requireRole(['ADMIN']), (req: Request, res: Response) => {
+orderRouter.post('/:id/assign-driver', requireRole(['ADMIN']), async (req: Request, res: Response) => {
   const { driverId } = req.body;
   if (!driverId) {
     return res.status(400).json({ error: 'Driver ID wajib disertakan.' });
   }
   try {
-    const updated = foodDb.manualAssignDriver(req.user?.userId || 'admin', req.params.id, driverId);
+    const updated = await foodDb.manualAssignDriver(req.user?.userId || 'admin', req.params.id, driverId);
     res.json(updated);
   } catch (e: any) {
     res.status(400).json({ error: e.message });
@@ -215,7 +215,7 @@ orderRouter.post('/:id/assign-driver', requireRole(['ADMIN']), (req: Request, re
 });
 
 // Customer payment proof upload - Enforces 10-minute expiry
-orderRouter.post('/:id/upload-payment', (req: Request, res: Response) => {
+orderRouter.post('/:id/upload-payment', async (req: Request, res: Response) => {
   const { paymentProof } = req.body;
   if (!paymentProof) {
     return res.status(400).json({ error: 'Bukti pembayaran wajib diunggah.' });
@@ -231,7 +231,7 @@ orderRouter.post('/:id/upload-payment', (req: Request, res: Response) => {
   const expiryTime = order.paymentExpiresAt ? new Date(order.paymentExpiresAt).getTime() : 0;
 
   if (expiryTime && now > expiryTime && order.status === OrderStatus.WAITING_PAYMENT) {
-    foodDb.updateOrder('SYSTEM', order.id, { status: OrderStatus.EXPIRED }, 'SYSTEM');
+    await foodDb.updateOrder('SYSTEM', order.id, { status: OrderStatus.EXPIRED }, 'SYSTEM');
     return res.status(400).json({
       error: 'Waktu pembayaran untuk pesanan ini telah kedaluwarsa (melebihi 10 menit). Pesanan ditandai sebagai KEDALUWARSA dan tidak dapat diproses lagi.'
     });
@@ -250,7 +250,7 @@ orderRouter.post('/:id/upload-payment', (req: Request, res: Response) => {
   }
 
   try {
-    const updated = foodDb.updateOrder(
+    const updated = await foodDb.updateOrder(
       'CUSTOMER',
       req.params.id,
       {
@@ -266,7 +266,7 @@ orderRouter.post('/:id/upload-payment', (req: Request, res: Response) => {
 });
 
 // Driver delivery proof upload - Protected
-orderRouter.post('/:id/upload-delivery', requireRole(['DRIVER', 'ADMIN']), (req: Request, res: Response) => {
+orderRouter.post('/:id/upload-delivery', requireRole(['DRIVER', 'ADMIN']), async (req: Request, res: Response) => {
   const { deliveryProof } = req.body;
   if (!deliveryProof) {
     return res.status(400).json({ error: 'Bukti foto pengantaran wajib disertakan.' });
@@ -285,7 +285,7 @@ orderRouter.post('/:id/upload-delivery', requireRole(['DRIVER', 'ADMIN']), (req:
   }
 
   try {
-    const updated = foodDb.updateOrder(
+    const updated = await foodDb.updateOrder(
       user.userId || user.entityId || 'driver',
       req.params.id,
       {

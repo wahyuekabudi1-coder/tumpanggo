@@ -9,7 +9,7 @@
 import express from 'express';
 import { foodDb } from './db.ts';
 import { foodConfig } from './config.ts';
-import { isFirestoreAdminConfigured, isUsingServiceAccount } from './firebaseAdmin.ts';
+import { isFirestoreAdminConfigured, isUsingServiceAccount, testFirestoreConnection } from './firebaseAdmin.ts';
 import { authenticateToken } from './auth.ts';
 import { authRouter } from './routes/authRoutes.ts';
 import { merchantRouter } from './routes/merchantRoutes.ts';
@@ -37,15 +37,27 @@ app.use(async (req, res, next) => {
 app.use(authenticateToken);
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'ok',
+app.get('/api/health', async (req, res) => {
+  const storageStatus = await foodDb.getStorageStatus();
+  const isHealthy = storageStatus.liveCloudConnected;
+  const isProd = foodConfig.isProduction;
+
+  res.status(isProd && !isHealthy ? 503 : 200).json({
+    status: isHealthy ? 'healthy' : (isProd ? 'degraded_disconnected_from_cloud' : 'ok_development_resilient_mode'),
     system: 'tumpang-food',
-    database: {
-      isolatedDatabaseId: foodConfig.databaseId,
-      firebaseAdminConfigured: isFirestoreAdminConfigured(),
-      usingServiceAccount: isUsingServiceAccount()
-    },
+    environment: process.env.NODE_ENV || 'development',
+    database: storageStatus,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Dedicated Firestore Connection Probe endpoint for on-demand validation
+app.get('/api/health/firestore-probe', async (req, res) => {
+  const probe = await testFirestoreConnection();
+  res.status(probe.connected ? 200 : 503).json({
+    system: 'tumpang-food',
+    probeOrigin: 'Dedicated Admin SDK Diagnostic Probe',
+    result: probe,
     timestamp: new Date().toISOString()
   });
 });

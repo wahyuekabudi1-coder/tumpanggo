@@ -24,7 +24,8 @@ import {
   runAdminTransaction,
   removeUndefinedFields,
   isFirestoreAdminConfigured,
-  isUsingServiceAccount
+  isUsingServiceAccount,
+  testFirestoreConnection
 } from './firebaseAdmin.ts';
 
 const FOOD_DB_FILE = foodConfig.localDbFile;
@@ -217,6 +218,44 @@ export class FoodDatabase {
       this.initPromise = this.init();
     }
     return this.initPromise;
+  }
+
+  /**
+   * Diagnostic assessment of runtime storage status: Cloud Firestore vs Local Resilient Snapshot.
+   */
+  public async getStorageStatus(): Promise<{
+    storageMode: 'cloud_firestore_active' | 'local_resilient_snapshot';
+    databaseId: string;
+    projectId: string;
+    isProduction: boolean;
+    firestoreConfigured: boolean;
+    usingServiceAccount: boolean;
+    authIdentity: string;
+    liveCloudConnected: boolean;
+    canRead: boolean;
+    canWrite: boolean;
+    diagnosticReason: string;
+    diagnosticDetail: string;
+    remediationStep?: string;
+    cloudError?: string;
+  }> {
+    const firestoreCheck = await testFirestoreConnection();
+    return {
+      storageMode: firestoreCheck.connected ? 'cloud_firestore_active' : 'local_resilient_snapshot',
+      databaseId: firestoreCheck.databaseId,
+      projectId: firestoreCheck.projectId,
+      isProduction: foodConfig.isProduction,
+      firestoreConfigured: isFirestoreAdminConfigured(),
+      usingServiceAccount: firestoreCheck.usingServiceAccount,
+      authIdentity: firestoreCheck.authIdentity,
+      liveCloudConnected: firestoreCheck.connected,
+      canRead: firestoreCheck.canRead,
+      canWrite: firestoreCheck.canWrite,
+      diagnosticReason: firestoreCheck.diagnosticReason,
+      diagnosticDetail: firestoreCheck.diagnosticDetail,
+      remediationStep: firestoreCheck.remediationStep,
+      cloudError: firestoreCheck.error
+    };
   }
 
   /**
@@ -771,7 +810,7 @@ export class FoodDatabase {
     return this.data.orders.filter(o => o.customerPhone === phone);
   }
 
-  public createOrder(rawInput: any): Order {
+  public async createOrder(rawInput: any): Promise<Order> {
     const merchant = this.getMerchantById(rawInput.merchantId);
     if (!merchant) throw new Error('Toko / Merchant tidak ditemukan.');
 
@@ -809,16 +848,25 @@ export class FoodDatabase {
     this.save();
     this.log('CUSTOMER', `Created order ${newOrder.id} Total: Rp ${newOrder.total.toLocaleString()} (UniqueCode: ${newOrder.uniqueCode})`, 'CUSTOMER');
 
-    safeFirestoreSetDoc('orders', newOrder.id, newOrder);
+    if (foodConfig.isProduction) {
+      const persisted = await safeFirestoreSetDoc('orders', newOrder.id, newOrder);
+      if (!persisted) {
+        this.data.orders.shift();
+        this.save();
+        throw new Error('[Produksi] Gagal menyimpan pesanan ke cloud Firestore. Transaksi dibatalkan secara aman demi mencegah kehilangan data.');
+      }
+    } else {
+      safeFirestoreSetDoc('orders', newOrder.id, newOrder);
+    }
     return newOrder;
   }
 
-  public updateOrder(
+  public async updateOrder(
     userId: string,
     id: string,
     updates: Partial<Order>,
     role: 'ADMIN' | 'MERCHANT' | 'DRIVER' | 'SYSTEM' | 'CUSTOMER'
-  ): Order {
+  ): Promise<Order> {
     const index = this.data.orders.findIndex(o => o.id === id);
     if (index === -1) throw new Error('Order not found');
 
@@ -857,17 +905,26 @@ export class FoodDatabase {
         updates.status === OrderStatus.PAYMENT_VERIFIED &&
         this.data.systemConfig.assignmentMode === AssignmentMode.AUTOMATIC
       ) {
-        this.autoAssignDriver(id);
+        await this.autoAssignDriver(id);
       }
     } else {
       this.log(userId, `Updated order ${id} details`, role);
     }
 
-    safeFirestoreSetDoc('orders', id, this.data.orders[index]);
+    if (foodConfig.isProduction) {
+      const persisted = await safeFirestoreSetDoc('orders', id, this.data.orders[index]);
+      if (!persisted) {
+        this.data.orders[index] = currentOrder;
+        this.save();
+        throw new Error('[Produksi] Gagal memperbarui status pesanan pada cloud Firestore. Perubahan status dibatalkan.');
+      }
+    } else {
+      safeFirestoreSetDoc('orders', id, this.data.orders[index]);
+    }
     return this.data.orders[index];
   }
 
-  public autoAssignDriver(orderId: string): void {
+  public async autoAssignDriver(orderId: string): Promise<void> {
     const order = this.getOrderById(orderId);
     if (!order) return;
 
@@ -889,17 +946,17 @@ export class FoodDatabase {
     driverTaskCounts.sort((a, b) => a.count - b.count);
     const selectedDriver = driverTaskCounts[0].driver;
 
-    this.updateOrder('SYSTEM', orderId, {
+    await this.updateOrder('SYSTEM', orderId, {
       driverId: selectedDriver.id,
       driverName: selectedDriver.name
     }, 'SYSTEM');
   }
 
-  public manualAssignDriver(userId: string, orderId: string, driverId: string): Order {
+  public async manualAssignDriver(userId: string, orderId: string, driverId: string): Promise<Order> {
     const driver = this.getDriverById(driverId);
     if (!driver) throw new Error('Driver not found');
 
-    const updated = this.updateOrder(userId, orderId, {
+    const updated = await this.updateOrder(userId, orderId, {
       driverId: driver.id,
       driverName: driver.name
     }, 'ADMIN');
@@ -1068,8 +1125,13 @@ export class FoodDatabase {
           if (txErr.message && txErr.message.includes('telah dicairkan')) {
             throw txErr;
           }
-          console.warn('[TumpangFood DB] Distributed Firestore Admin transaction fallback:', txErr.message);
+          if (foodConfig.isProduction) {
+            throw new Error(`[Produksi] Transaksi cloud Firestore gagal: ${txErr.message}. Pencairan dibatalkan demi menjaga integritas data keuangan.`);
+          }
+          console.warn('[TumpangFood DB] Distributed Firestore Admin transaction fallback in development mode:', txErr.message);
         }
+      } else if (foodConfig.isProduction) {
+        throw new Error('[Produksi] Firebase Admin Firestore wajib aktif dan terhubung untuk memproses pencairan dana (settlement).');
       }
 
       // 4. LOCAL COMMIT: Mark all orders as settled and attach settlementId
@@ -1189,8 +1251,13 @@ export class FoodDatabase {
               transaction.set(settlementRef, removeUndefinedFields(newSettlement));
             });
           } catch (txErr: any) {
+            if (foodConfig.isProduction) {
+              throw new Error(`[Produksi] Transaksi cloud Firestore gagal untuk merchant ${merchantId}: ${txErr.message}`);
+            }
             console.warn(`[TumpangFood DB] H+1 atomic transaction fallback for ${merchantId}:`, txErr.message);
           }
+        } else if (foodConfig.isProduction) {
+          throw new Error('[Produksi] Firebase Admin Firestore wajib aktif untuk membuat H+1 settlements.');
         }
 
         for (const o of orders) {
@@ -1335,38 +1402,83 @@ export class FoodDatabase {
     return newLicense;
   }
 
-  public redeemLicense(merchantId: string, key: string): Merchant {
-    const cleanKey = key.trim().toUpperCase();
-    const license = this.data.licenses.find(l => l.key === cleanKey);
-    if (!license) throw new Error('Kode lisensi tidak valid / tidak ditemukan.');
-    if (license.status === 'USED') throw new Error('Kode lisensi ini sudah digunakan.');
+  public async redeemLicense(merchantId: string, key: string): Promise<Merchant> {
+    return this.runWithSettlementLock(async () => {
+      const cleanKey = key.trim().toUpperCase();
+      const license = this.data.licenses.find(l => l.key === cleanKey);
+      if (!license) throw new Error('Kode lisensi tidak valid / tidak ditemukan.');
+      if (license.status === 'USED') throw new Error('Kode lisensi ini sudah digunakan.');
 
-    const merchant = this.getMerchantById(merchantId);
-    if (!merchant) throw new Error('Merchant tidak ditemukan.');
+      const merchant = this.data.merchants.find(m => m.id === merchantId);
+      if (!merchant) throw new Error('Merchant tidak ditemukan.');
 
-    license.status = 'USED';
-    license.usedByMerchantId = merchantId;
-    license.usedByMerchantName = merchant.name;
-    license.usedAt = new Date().toISOString();
+      const nowIso = new Date().toISOString();
+      const expirationDate = new Date();
+      expirationDate.setDate(expirationDate.getDate() + license.durationDays);
 
-    const expirationDate = new Date();
-    expirationDate.setDate(expirationDate.getDate() + license.durationDays);
+      const updatedLicense: LicenseKey = {
+        ...license,
+        status: 'USED',
+        usedByMerchantId: merchantId,
+        usedByMerchantName: merchant.name,
+        usedAt: nowIso
+      };
 
-    merchant.isPremium = true;
-    merchant.licenseKey = cleanKey;
-    merchant.licenseExpiresAt = expirationDate.toISOString();
-    merchant.preOrderOnly = true;
-    merchant.allowInstantAndPreOrder = false;
-    if (!merchant.preOrderMinAmount) merchant.preOrderMinAmount = 1;
-    if (!merchant.preOrderLeadDays) merchant.preOrderLeadDays = 1;
-    merchant.updatedAt = new Date().toISOString();
+      const updatedMerchant: Merchant = {
+        ...merchant,
+        isPremium: true,
+        licenseKey: cleanKey,
+        licenseExpiresAt: expirationDate.toISOString(),
+        preOrderOnly: true,
+        allowInstantAndPreOrder: false,
+        preOrderMinAmount: merchant.preOrderMinAmount || 1,
+        preOrderLeadDays: merchant.preOrderLeadDays || 1,
+        updatedAt: nowIso
+      };
 
-    this.save();
-    this.log(merchantId, `Redeemed license key ${cleanKey}`, 'MERCHANT');
+      const adminDb = getAdminDb();
+      if (adminDb) {
+        try {
+          await runAdminTransaction(async (transaction) => {
+            const licRef = adminDb.collection('licenses').doc(cleanKey);
+            const licSnap = await transaction.get(licRef);
+            if (licSnap.exists) {
+              const remoteLic = licSnap.data();
+              if (remoteLic?.status === 'USED') {
+                throw new Error('Kode lisensi ini sudah digunakan oleh merchant lain.');
+              }
+            }
+            transaction.set(licRef, removeUndefinedFields(updatedLicense), { merge: true });
+            const merRef = adminDb.collection('merchants').doc(merchantId);
+            transaction.set(merRef, removeUndefinedFields(updatedMerchant), { merge: true });
+          });
+        } catch (txErr: any) {
+          if (txErr.message && txErr.message.includes('sudah digunakan')) {
+            throw txErr;
+          }
+          if (foodConfig.isProduction) {
+            throw new Error(`[Produksi] Transaksi cloud Firestore gagal untuk redeem lisensi: ${txErr.message}`);
+          }
+          console.warn('[TumpangFood DB] Distributed Firestore Admin transaction fallback for license in dev mode:', txErr.message);
+        }
+      } else if (foodConfig.isProduction) {
+        throw new Error('[Produksi] Firebase Admin Firestore wajib aktif untuk aktivasi lisensi.');
+      }
 
-    safeFirestoreSetDoc('licenses', cleanKey, license);
-    safeFirestoreSetDoc('merchants', merchantId, merchant);
-    return merchant;
+      // Local update
+      const licIndex = this.data.licenses.findIndex(l => l.key === cleanKey);
+      if (licIndex >= 0) this.data.licenses[licIndex] = updatedLicense;
+      const merIndex = this.data.merchants.findIndex(m => m.id === merchantId);
+      if (merIndex >= 0) this.data.merchants[merIndex] = updatedMerchant;
+
+      this.save();
+      this.createBackup();
+      this.log(merchantId, `Redeemed license key ${cleanKey}`, 'MERCHANT');
+
+      safeFirestoreSetDoc('licenses', cleanKey, updatedLicense);
+      safeFirestoreSetDoc('merchants', merchantId, updatedMerchant);
+      return updatedMerchant;
+    });
   }
 }
 

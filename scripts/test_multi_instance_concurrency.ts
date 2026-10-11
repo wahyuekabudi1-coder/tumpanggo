@@ -19,18 +19,19 @@ async function testMultiInstance() {
   const merchants = foodDb.getMerchants();
   const m = merchants[0];
 
-  const testOrder = foodDb.createOrder({
+  const testOrder = await foodDb.createOrder({
     merchantId: m.id,
     customerName: 'Multi-Instance Tester',
     customerPhone: '081299998888',
     deliveryAddress: 'Jl. Concurrency Test 99',
     latitude: -7.98,
     longitude: 112.63,
+    preOrderDate: '2026-10-12',
     items: [{ menuItemId: foodDb.getMenuItemsByMerchant(m.id)[0]?.id, quantity: 1 }]
   });
 
   // Mark as COMPLETED
-  foodDb.updateOrder('admin', testOrder.id, { status: OrderStatus.COMPLETED }, 'ADMIN');
+  await foodDb.updateOrder('admin', testOrder.id, { status: OrderStatus.COMPLETED }, 'ADMIN');
 
   console.log(`  ℹ️  Pesanan uji disiapkan: ${testOrder.id} (Merchant: ${m.name})`);
 

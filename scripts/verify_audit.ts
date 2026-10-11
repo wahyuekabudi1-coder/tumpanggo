@@ -179,6 +179,7 @@ async function runTests() {
       deliveryAddress: 'Jl. Raya Tumpang No. 12',
       latitude: -7.9812,
       longitude: 112.6315,
+      preOrderDate: '2026-10-15',
       items: [{ menuItemId: testMenuItem.id, quantity: 2 }]
     })
   });
@@ -267,6 +268,7 @@ async function runTests() {
       deliveryAddress: 'Jl. Uji A',
       latitude: -7.981,
       longitude: 112.631,
+      preOrderDate: '2026-10-15',
       items: [{ menuItemId: testMenuItem.id, quantity: 1 }]
     })
   })).json();
@@ -281,6 +283,7 @@ async function runTests() {
       deliveryAddress: 'Jl. Uji B',
       latitude: -7.981,
       longitude: 112.631,
+      preOrderDate: '2026-10-15',
       items: [{ menuItemId: testMenuItem.id, quantity: 2 }]
     })
   })).json();

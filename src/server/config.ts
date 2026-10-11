@@ -6,6 +6,7 @@
  * Isolates runtime environment variables, database identifiers, and system defaults.
  */
 
+import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
@@ -35,14 +36,7 @@ const localDbFile = isServerless
 let runtimeAdminPassword = process.env.FOOD_ADMIN_PASSWORD;
 let runtimeAdminEmail = process.env.FOOD_ADMIN_EMAIL;
 
-if (process.env.NODE_ENV === 'production') {
-  if (!runtimeAdminPassword || runtimeAdminPassword.trim().length < 8) {
-    throw new Error('[TumpangFood Security] Variabel lingkungan FOOD_ADMIN_PASSWORD wajib disetel dengan minimal 8 karakter pada lingkungan produksi.');
-  }
-  if (!runtimeAdminEmail || !runtimeAdminEmail.includes('@')) {
-    throw new Error('[TumpangFood Security] Variabel lingkungan FOOD_ADMIN_EMAIL wajib disetel dengan alamat email sah pada lingkungan produksi.');
-  }
-} else {
+if (process.env.NODE_ENV !== 'production') {
   if (!runtimeAdminPassword) {
     runtimeAdminPassword = 'TumpangGoAdmin#2026';
   }
@@ -51,7 +45,83 @@ if (process.env.NODE_ENV === 'production') {
   }
 }
 
+// Production Strict Verification
+export function validateProductionEnvironment(): { isValid: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  const secret = process.env.FOOD_AUTH_SECRET;
+  if (!secret || secret.trim().length < 32) {
+    errors.push('FOOD_AUTH_SECRET wajib disetel dan memiliki minimal 32 karakter.');
+  }
+
+  const adminEmail = process.env.FOOD_ADMIN_EMAIL;
+  if (!adminEmail || !adminEmail.includes('@')) {
+    errors.push('FOOD_ADMIN_EMAIL wajib disetel dengan alamat email yang sah.');
+  }
+
+  const adminPassword = process.env.FOOD_ADMIN_PASSWORD;
+  if (!adminPassword || adminPassword.trim().length < 8) {
+    errors.push('FOOD_ADMIN_PASSWORD wajib disetel dengan minimal 8 karakter.');
+  }
+
+  const projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCP_PROJECT;
+  if (!projectId || projectId.trim().length === 0) {
+    errors.push('FIREBASE_PROJECT_ID wajib disetel pada lingkungan produksi.');
+  }
+
+  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY || process.env.GOOGLE_SERVICE_ACCOUNT_KEY || process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  if (!serviceAccount || serviceAccount.trim().length === 0) {
+    errors.push('FIREBASE_SERVICE_ACCOUNT_KEY wajib disetel untuk otentikasi Firebase Admin SDK pada lingkungan produksi.');
+  } else {
+    // Validate format without leaking contents
+    const raw = serviceAccount.trim();
+    let parsed: any = null;
+    try {
+      let cleanRaw = raw;
+      if ((cleanRaw.startsWith("'") && cleanRaw.endsWith("'")) || (cleanRaw.startsWith('"') && cleanRaw.endsWith('"'))) {
+        cleanRaw = cleanRaw.slice(1, -1);
+      }
+      if (cleanRaw.startsWith('{')) {
+        parsed = JSON.parse(cleanRaw);
+      } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS && fs.existsSync(raw)) {
+        parsed = JSON.parse(fs.readFileSync(raw, 'utf-8'));
+      } else {
+        const decoded = Buffer.from(cleanRaw, 'base64').toString('utf-8');
+        if (decoded.trim().startsWith('{')) {
+          parsed = JSON.parse(decoded);
+        }
+      }
+    } catch {
+      // Ignored here, checked below
+    }
+
+    if (!parsed || typeof parsed !== 'object') {
+      errors.push('FIREBASE_SERVICE_ACCOUNT_KEY tidak berformat JSON atau Base64 yang valid.');
+    } else if (!parsed.client_email || !parsed.private_key) {
+      errors.push('FIREBASE_SERVICE_ACCOUNT_KEY wajib memiliki field "client_email" dan "private_key".');
+    }
+  }
+
+  const portVal = parseInt(process.env.PORT || process.env.FOOD_PORT || '3000', 10);
+  if (isNaN(portVal) || portVal < 1 || portVal > 65535) {
+    errors.push('PORT atau FOOD_PORT harus berupa angka port TCP yang valid (1-65535).');
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+}
+
+if (process.env.NODE_ENV === 'production') {
+  const check = validateProductionEnvironment();
+  if (!check.isValid) {
+    throw new Error(`[TumpangFood Security] Kegagalan konfigurasi produksi:\n- ${check.errors.join('\n- ')}`);
+  }
+}
+
 export const foodConfig = {
+  isProduction: process.env.NODE_ENV === 'production',
   // Server port
   port: parseInt(process.env.PORT || process.env.FOOD_PORT || '3000', 10),
   host: '0.0.0.0',
@@ -63,7 +133,7 @@ export const foodConfig = {
   legacyDbFile: path.join(process.cwd(), 'tumpang_db.json'),
   
   // Security & Authentication
-  jwtSecret: runtimeJwtSecret,
+  jwtSecret: runtimeJwtSecret || 'dev_secret_fallback_do_not_use_in_prod',
   adminEmail: runtimeAdminEmail.toLowerCase(),
   adminPassword: runtimeAdminPassword,
   

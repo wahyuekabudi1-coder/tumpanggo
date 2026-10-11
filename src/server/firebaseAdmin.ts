@@ -16,6 +16,12 @@ import { foodConfig } from './config.ts';
 let adminApp: App | null = null;
 let adminDb: Firestore | null = null;
 let isConfiguredWithServiceAccount = false;
+let activeProjectId = 'gen-lang-client-0238078208';
+let activeClientEmailMasked: string | null = null;
+
+export function getActiveProjectId(): string {
+  return activeProjectId;
+}
 
 // Helper to remove undefined fields recursively for Firestore compatibility
 export function removeUndefinedFields(obj: any): any {
@@ -30,75 +36,133 @@ export function removeUndefinedFields(obj: any): any {
   return cleaned;
 }
 
-try {
-  let projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCP_PROJECT;
-  
-  // Try loading projectId from firebase-applet-config.json if not present in env
-  const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
-  if (!projectId && fs.existsSync(configPath)) {
-    try {
-      const raw = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-      if (raw.projectId) {
-        projectId = raw.projectId;
+/**
+ * Initializes or re-initializes the Firebase Admin SDK.
+ * Supports raw JSON, Base64 JSON, and handles PEM newline normalization safely without leaking credentials.
+ */
+export function initFirebaseAdmin(serviceAccountOverride?: string): { success: boolean; error?: string } {
+  try {
+    let projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCP_PROJECT;
+
+    // Try loading projectId from firebase-applet-config.json if not present in env
+    const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
+    if (!projectId && fs.existsSync(configPath)) {
+      try {
+        const raw = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+        if (raw.projectId) {
+          projectId = raw.projectId;
+        }
+      } catch {
+        // Ignore parsing errors for optional config
       }
-    } catch {
-      // Ignore
     }
-  }
 
-  projectId = projectId || 'gen-lang-client-0238078208';
+    projectId = projectId || 'gen-lang-client-0238078208';
+    activeProjectId = projectId;
 
-  // Check for server-side service account credentials via environment variables
-  // Never expose or hardcode private keys in source code!
-  const serviceAccountEnv = process.env.FIREBASE_SERVICE_ACCOUNT_KEY || process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
-  let credentialOption: any = undefined;
+    const rawInput = (serviceAccountOverride || process.env.FIREBASE_SERVICE_ACCOUNT_KEY || process.env.GOOGLE_SERVICE_ACCOUNT_KEY || '').trim();
+    let credentialOption: any = undefined;
+    isConfiguredWithServiceAccount = false;
+    activeClientEmailMasked = null;
 
-  if (serviceAccountEnv && serviceAccountEnv.trim().length > 0) {
-    try {
-      let rawJson = serviceAccountEnv.trim();
-      // Support base64-encoded JSON or direct JSON string
-      if (rawJson.startsWith('{')) {
-        const parsed = JSON.parse(rawJson);
+    if (rawInput.length > 0) {
+      try {
+        let cleanRaw = rawInput;
+        if ((cleanRaw.startsWith("'") && cleanRaw.endsWith("'")) || (cleanRaw.startsWith('"') && cleanRaw.endsWith('"'))) {
+          cleanRaw = cleanRaw.slice(1, -1);
+        }
+
+        let parsed: any = null;
+        if (cleanRaw.startsWith('{')) {
+          parsed = JSON.parse(cleanRaw);
+        } else {
+          try {
+            const decoded = Buffer.from(cleanRaw, 'base64').toString('utf-8');
+            if (decoded.trim().startsWith('{')) {
+              parsed = JSON.parse(decoded);
+            }
+          } catch {
+            // Not base64 JSON
+          }
+        }
+
+        if (parsed && typeof parsed === 'object') {
+          // Normalize PEM private key newlines (frequent cause of Invalid PEM error in hosting providers)
+          if (parsed.private_key && typeof parsed.private_key === 'string') {
+            parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
+          }
+
+          if (parsed.project_id) {
+            projectId = parsed.project_id;
+            activeProjectId = parsed.project_id;
+          }
+
+          credentialOption = cert(parsed);
+          isConfiguredWithServiceAccount = true;
+
+          // Safe masked client email for diagnostics without leaking private keys
+          if (parsed.client_email && typeof parsed.client_email === 'string') {
+            const parts = parsed.client_email.split('@');
+            if (parts.length === 2) {
+              const userPart = parts[0];
+              const domainPart = parts[1];
+              activeClientEmailMasked = `${userPart.substring(0, 3)}***@${domainPart}`;
+            } else {
+              activeClientEmailMasked = 'configured_service_account';
+            }
+          }
+
+          console.log(`[TumpangFood Admin] Loaded Service Account (Project: ${projectId}, ServiceAccount: ${activeClientEmailMasked || 'verified'}).`);
+        } else {
+          console.warn('[TumpangFood Admin] FIREBASE_SERVICE_ACCOUNT_KEY is present but could not be parsed as valid JSON.');
+        }
+      } catch (err: any) {
+        console.error('[TumpangFood Admin] Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:', err.message);
+      }
+    } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS && fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
+      try {
+        const fileContent = fs.readFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS, 'utf-8');
+        const parsed = JSON.parse(fileContent);
+        if (parsed.private_key && typeof parsed.private_key === 'string') {
+          parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
+        }
         credentialOption = cert(parsed);
         if (parsed.project_id) {
           projectId = parsed.project_id;
+          activeProjectId = parsed.project_id;
         }
-      } else {
-        const decoded = Buffer.from(rawJson, 'base64').toString('utf-8');
-        const parsed = JSON.parse(decoded);
-        credentialOption = cert(parsed);
-        if (parsed.project_id) {
-          projectId = parsed.project_id;
-        }
+        isConfiguredWithServiceAccount = true;
+        activeClientEmailMasked = parsed.client_email ? `${parsed.client_email.substring(0, 3)}***` : 'file_credential';
+        console.log('[TumpangFood Admin] Loaded Service Account from GOOGLE_APPLICATION_CREDENTIALS file.');
+      } catch (err: any) {
+        console.error('[TumpangFood Admin] Failed to parse GOOGLE_APPLICATION_CREDENTIALS file:', err.message);
       }
-      isConfiguredWithServiceAccount = true;
-      console.log('[TumpangFood Admin] Loaded server-side Service Account credentials from environment.');
-    } catch (err: any) {
-      console.error('[TumpangFood Admin] Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:', err.message);
     }
-  } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS && fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
-    isConfiguredWithServiceAccount = true;
-    console.log('[TumpangFood Admin] Using GOOGLE_APPLICATION_CREDENTIALS path.');
-  }
 
-  if (getApps().length === 0) {
-    const initOptions: any = { projectId };
-    if (credentialOption) {
-      initOptions.credential = credentialOption;
+    if (getApps().length === 0) {
+      const initOptions: any = { projectId };
+      if (credentialOption) {
+        initOptions.credential = credentialOption;
+      }
+      adminApp = initializeApp(initOptions);
+    } else {
+      adminApp = getApps()[0];
     }
-    adminApp = initializeApp(initOptions);
-  } else {
-    adminApp = getApps()[0];
-  }
 
-  // Initialize Firestore targeting the dedicated isolated database ID
-  adminDb = getFirestore(adminApp, foodConfig.databaseId);
-  console.log(`[TumpangFood Admin] Firebase Admin SDK initialized for database "${foodConfig.databaseId}" on project "${projectId}".`);
-} catch (e: any) {
-  console.error('[TumpangFood Admin] Failed to initialize Firebase Admin SDK:', e.message);
-  adminApp = null;
-  adminDb = null;
+    // Initialize Firestore targeting the dedicated isolated database ID
+    adminDb = getFirestore(adminApp, foodConfig.databaseId);
+    console.log(`[TumpangFood Admin] Firebase Admin SDK initialized for database "${foodConfig.databaseId}" on project "${projectId}".`);
+    return { success: true };
+  } catch (e: any) {
+    console.error('[TumpangFood Admin] Failed to initialize Firebase Admin SDK:', e.message);
+    adminApp = null;
+    adminDb = null;
+    return { success: false, error: e.message };
+  }
 }
+
+// Initial bootstrap
+initFirebaseAdmin();
 
 export function getAdminDb(): Firestore | null {
   return adminDb;
@@ -110,6 +174,136 @@ export function isFirestoreAdminConfigured(): boolean {
 
 export function isUsingServiceAccount(): boolean {
   return isConfiguredWithServiceAccount;
+}
+
+export interface FirestoreProbeResult {
+  connected: boolean;
+  canRead: boolean;
+  canWrite: boolean;
+  databaseId: string;
+  projectId: string;
+  usingServiceAccount: boolean;
+  authIdentity: string;
+  error?: string;
+  diagnosticReason: 'OK' | 'MISSING_CREDENTIALS' | 'IAM_PERMISSION_DENIED' | 'DATABASE_NOT_FOUND' | 'INVALID_PROJECT' | 'NETWORK_ERROR' | 'UNKNOWN';
+  diagnosticDetail: string;
+  remediationStep?: string;
+}
+
+/**
+ * Tests live connection to Firestore using the Admin SDK.
+ * Probes both read and write operations on an isolated test document (_systemConnectionProbe)
+ * without touching customer or merchant business data.
+ * Accurately diagnoses whether errors stem from IAM permissions, missing credentials, or database mismatch.
+ */
+export async function testFirestoreConnection(): Promise<FirestoreProbeResult> {
+  const probeId = `probe_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  let canRead = false;
+  let canWrite = false;
+  let probeError: string | undefined = undefined;
+  let diagnosticReason: FirestoreProbeResult['diagnosticReason'] = 'OK';
+
+  if (!adminDb) {
+    return {
+      connected: false,
+      canRead: false,
+      canWrite: false,
+      databaseId: foodConfig.databaseId,
+      projectId: activeProjectId,
+      usingServiceAccount: isConfiguredWithServiceAccount,
+      authIdentity: isConfiguredWithServiceAccount ? 'ServiceAccount' : 'Sandbox-ADC',
+      error: 'Firebase Admin Firestore belum terinisialisasi.',
+      diagnosticReason: 'MISSING_CREDENTIALS',
+      diagnosticDetail: 'Firebase Admin SDK belum berhasil diinisialisasi karena ketiadaan konfigurasi dasar.',
+      remediationStep: 'Periksa file firebase-applet-config.json dan setel variabel lingkungan FIREBASE_PROJECT_ID.'
+    };
+  }
+
+  const probeRef = adminDb.collection('_systemConnectionProbe').doc(probeId);
+
+  // 1. Write Probe on dedicated test document
+  try {
+    await probeRef.set({
+      ping: true,
+      timestamp: new Date().toISOString(),
+      probeOrigin: 'TumpangFood Health Check'
+    });
+    canWrite = true;
+  } catch (err: any) {
+    probeError = err.message || String(err);
+  }
+
+  // 2. Read Probe
+  if (canWrite) {
+    try {
+      const snap = await probeRef.get();
+      canRead = snap.exists;
+      // Clean up test document immediately
+      await probeRef.delete().catch(() => {});
+    } catch (err: any) {
+      probeError = probeError || err.message;
+    }
+  } else {
+    // Attempt read on systemConfig to see if read access is permitted
+    try {
+      const snap = await adminDb.collection('systemConfig').doc('config_1').get();
+      canRead = snap.exists;
+    } catch (err: any) {
+      probeError = err.message || String(err);
+    }
+  }
+
+  // 3. Diagnose root cause
+  let diagnosticDetail = 'Koneksi cloud Firestore Admin SDK aktif dan berhasil membaca/menulis data.';
+  let remediationStep: string | undefined = undefined;
+
+  if (probeError) {
+    const lower = probeError.toLowerCase();
+    if (lower.includes('permission_denied') || lower.includes('missing or insufficient permissions')) {
+      if (!isConfiguredWithServiceAccount) {
+        diagnosticReason = 'MISSING_CREDENTIALS';
+        diagnosticDetail = `Kredensial Service Account belum disetel di lingkungan produksi (FIREBASE_SERVICE_ACCOUNT_KEY kosong). Server menggunakan Application Default Credentials (ADC) bawaan container sandbox yang tidak memiliki izin IAM pada proyek "${activeProjectId}".`;
+        remediationStep = 'Generate Service Account JSON Key pada Google Cloud / Firebase Console (IAM & Admin -> Service Accounts), lalu masukkan isi JSON ke variabel lingkungan FIREBASE_SERVICE_ACCOUNT_KEY.';
+      } else {
+        diagnosticReason = 'IAM_PERMISSION_DENIED';
+        diagnosticDetail = `Service Account (${activeClientEmailMasked || 'terpasang'}) ditolak oleh Google Cloud IAM (HTTP/gRPC 7 PERMISSION_DENIED). Akun layanan tersebut belum memiliki hak akses peran 'Cloud Datastore User' (roles/datastore.user) atau 'Firebase Admin' pada proyek "${activeProjectId}".`;
+        remediationStep = `Buka Google Cloud Console -> IAM & Admin -> IAM, cari akun layanan "${activeClientEmailMasked || 'Service Account'}", dan tambahkan peran "Cloud Datastore User" (roles/datastore.user).`;
+      }
+    } else if (lower.includes('not found') || lower.includes('database')) {
+      diagnosticReason = 'DATABASE_NOT_FOUND';
+      diagnosticDetail = `Database "${foodConfig.databaseId}" tidak ditemukan pada proyek "${activeProjectId}". Pastikan database Firestore dengan ID tersebut sudah dibuat.`;
+      remediationStep = `Buat database Firestore dengan ID "${foodConfig.databaseId}" di Firebase Console atau Google Cloud Console Firestore Databases.`;
+    } else if (lower.includes('project') || lower.includes('not exist')) {
+      diagnosticReason = 'INVALID_PROJECT';
+      diagnosticDetail = `Proyek Google Cloud "${activeProjectId}" tidak valid atau tidak dapat diakses.`;
+      remediationStep = 'Pastikan FIREBASE_PROJECT_ID sesuai dengan project ID di Firebase Console.';
+    } else if (lower.includes('unavailable') || lower.includes('econnrefused') || lower.includes('deadline')) {
+      diagnosticReason = 'NETWORK_ERROR';
+      diagnosticDetail = 'Gagal menghubungi server Google Cloud Firestore karena kendala jaringan atau timeout.';
+      remediationStep = 'Periksa koneksi jaringan server dan pastikan firewall mengizinkan egress HTTPS/gRPC ke Google Cloud APIs.';
+    } else {
+      diagnosticReason = 'UNKNOWN';
+      diagnosticDetail = `Terjadi kesalahan saat menghubungi Firestore: ${probeError}`;
+      remediationStep = 'Periksa log server untuk rincian error gRPC/HTTP Firestore.';
+    }
+  }
+
+  const isFullyConnected = canRead && canWrite;
+  return {
+    connected: isFullyConnected,
+    canRead,
+    canWrite,
+    databaseId: foodConfig.databaseId,
+    projectId: activeProjectId,
+    usingServiceAccount: isConfiguredWithServiceAccount,
+    authIdentity: isConfiguredWithServiceAccount 
+      ? `Custom Service Account (${activeClientEmailMasked || 'configured'})` 
+      : 'Default Sandbox Container ADC (No IAM on Project)',
+    error: probeError,
+    diagnosticReason: isFullyConnected ? 'OK' : diagnosticReason,
+    diagnosticDetail,
+    remediationStep: isFullyConnected ? undefined : remediationStep
+  };
 }
 
 /**

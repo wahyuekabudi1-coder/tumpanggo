@@ -131,13 +131,13 @@ merchantRouter.get('/:merchantId/settlements', requireMerchantOwner('merchantId'
 });
 
 // --- LICENSE REDEMPTION ---
-merchantRouter.post('/:id/redeem-license', requireMerchantOwner('id'), (req: Request, res: Response) => {
+merchantRouter.post('/:id/redeem-license', requireMerchantOwner('id'), async (req: Request, res: Response) => {
   const { key } = req.body;
   if (!key) {
     return res.status(400).json({ error: 'Kode lisensi wajib diisi.' });
   }
   try {
-    const updatedMerchant = foodDb.redeemLicense(req.params.id, key);
+    const updatedMerchant = await foodDb.redeemLicense(req.params.id, key);
     res.json(updatedMerchant);
   } catch (e: any) {
     res.status(400).json({ error: e.message });

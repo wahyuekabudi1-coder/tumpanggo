@@ -19,9 +19,16 @@
       "address": "Jl. Raya Tumpang No. 45, Tumpang, Malang",
       "longitude": 112.7612,
       "active": true,
-      "updatedAt": "2026-10-11T03:55:21.686Z",
+      "updatedAt": "2026-10-11T06:36:45.634Z",
       "bankAccount": "1440023456789",
-      "password": "pbkdf2$10000$d0aed955b91c87723b2c7c6b6c37b660$ee4fb55f50a226442b12ab2efc995914afefd64a8ed9714e8d04fd82e2334437769fb1d1f483128814a20072b988509b95b628c19c0122a565c0fa231d390de7"
+      "isPremium": true,
+      "licenseKey": "TUMPANG-PREM-U1GO2S",
+      "licenseExpiresAt": "2026-11-10T06:36:45.634Z",
+      "preOrderOnly": true,
+      "allowInstantAndPreOrder": false,
+      "preOrderMinAmount": 1,
+      "preOrderLeadDays": 1,
+      "password": "pbkdf2$10000$5abf1e8ba61cce091b5a5c24375797aa$fb04485f853ac03c55d63710b8108c33a829a12a0c8473f4fe03559e6da2beca6fd164c31b1c332079cf3d8b28d2ccf739cca9c660b3f508f77e5528060850ff"
     },
     {
       "closeTime": "22:30",
@@ -33,7 +40,7 @@
       "bankHolder": "Ali Imron",
       "description": "Sate ayam dan kambing empuk berbumbu kacang khas Malang racikan resep keluarga.",
       "image": "https://images.unsplash.com/photo-1561758033-d89a9ad46330?w=600&auto=format&fit=crop&q=80",
-      "updatedAt": "2026-10-11T03:57:25.967Z",
+      "updatedAt": "2026-10-11T06:22:02.641Z",
       "address": "Jl. Kebon Agung No. 12, Tumpang, Malang",
       "email": "cakali@tumpangfood.com",
       "id": "m2",
@@ -45,13 +52,13 @@
       "bankAccount": "3150987654",
       "ownerName": "Cak Ali",
       "isPremium": true,
-      "licenseKey": "TUMPANG-PREM-DEMO-99",
-      "licenseExpiresAt": "2027-01-09T03:57:25.967Z",
+      "licenseKey": "TUMPANG-PREM-ZTDYVGL9",
+      "licenseExpiresAt": "2026-11-10T06:22:02.641Z",
       "preOrderOnly": true,
       "allowInstantAndPreOrder": false,
       "preOrderMinAmount": 1,
       "preOrderLeadDays": 1,
-      "password": "pbkdf2$10000$287c785af3c7870c8f06ffdac3669e5e$1ad576f7844d2d56affa0851f6243a9334be3c47d610dc90627573efc963d57e7d1ba872d825742401e74d017a106dec46494082077cf4ade2bcdcb14f4de8ee"
+      "password": "pbkdf2$10000$68ab955631067726ae8309f459456f39$6ca4e3750ab22eb8a38740514f64c79444ac455c0e6beecdff4e5ee8a93746f149ebe7571c9d314a3c06e28fd4032506ccbf6f0211bfd2fefad42dc751a3180c"
     },
     {
       "updatedAt": "2026-07-01T03:43:20.205Z",
@@ -533,6 +540,478 @@
     }
   ],
   "orders": [
+    {
+      "uniqueCode": 23,
+      "total": 42373,
+      "status": "COMPLETED",
+      "merchantId": "m1",
+      "merchantName": "Bakso Solo Pak Kumis Tumpang",
+      "customerName": "Multi-Instance Tester",
+      "customerPhone": "081299998888",
+      "deliveryAddress": "Jl. Concurrency Test 99",
+      "deliveryDetails": "",
+      "landmark": "",
+      "latitude": -7.98,
+      "longitude": 112.63,
+      "items": [
+        {
+          "menuItemId": "menu_1",
+          "name": "Bakso Komplit Super",
+          "price": 18000,
+          "quantity": 1
+        }
+      ],
+      "subtotal": 18000,
+      "deliveryFee": 22350,
+      "serviceFee": 2000,
+      "paymentExpiresAt": "2026-10-11T07:00:54.098Z",
+      "preOrderDate": "2026-10-12",
+      "id": "ord_45by9s2",
+      "createdAt": "2026-10-11T06:50:54.098Z",
+      "updatedAt": "2026-10-11T06:50:54.312Z",
+      "isSettled": true,
+      "settlementId": "set_g61du09",
+      "settledAt": "2026-10-11T06:50:54.312Z"
+    },
+    {
+      "uniqueCode": 65,
+      "total": 60265,
+      "status": "COMPLETED",
+      "merchantId": "m1",
+      "merchantName": "Bakso Solo Pak Kumis Tumpang",
+      "customerName": "Tester B",
+      "customerPhone": "081200000002",
+      "deliveryAddress": "Jl. Uji B",
+      "deliveryDetails": "",
+      "landmark": "",
+      "latitude": -7.981,
+      "longitude": 112.631,
+      "items": [
+        {
+          "menuItemId": "menu_1",
+          "name": "Bakso Komplit Super",
+          "price": 18000,
+          "quantity": 2
+        }
+      ],
+      "subtotal": 36000,
+      "deliveryFee": 22200,
+      "serviceFee": 2000,
+      "paymentExpiresAt": "2026-10-11T07:00:41.995Z",
+      "preOrderDate": "2026-10-15",
+      "id": "ord_1mh43le",
+      "createdAt": "2026-10-11T06:50:41.995Z",
+      "updatedAt": "2026-10-11T06:50:42.077Z",
+      "isSettled": true,
+      "settlementId": "set_bow7kkk",
+      "settledAt": "2026-10-11T06:50:42.077Z"
+    },
+    {
+      "uniqueCode": 69,
+      "total": 42269,
+      "status": "COMPLETED",
+      "merchantId": "m1",
+      "merchantName": "Bakso Solo Pak Kumis Tumpang",
+      "customerName": "Tester A",
+      "customerPhone": "081200000001",
+      "deliveryAddress": "Jl. Uji A",
+      "deliveryDetails": "",
+      "landmark": "",
+      "latitude": -7.981,
+      "longitude": 112.631,
+      "items": [
+        {
+          "menuItemId": "menu_1",
+          "name": "Bakso Komplit Super",
+          "price": 18000,
+          "quantity": 1
+        }
+      ],
+      "subtotal": 18000,
+      "deliveryFee": 22200,
+      "serviceFee": 2000,
+      "paymentExpiresAt": "2026-10-11T07:00:41.975Z",
+      "preOrderDate": "2026-10-15",
+      "id": "ord_kukadoh",
+      "createdAt": "2026-10-11T06:50:41.975Z",
+      "updatedAt": "2026-10-11T06:50:42.077Z",
+      "isSettled": true,
+      "settlementId": "set_bow7kkk",
+      "settledAt": "2026-10-11T06:50:42.077Z"
+    },
+    {
+      "uniqueCode": 31,
+      "total": 60081,
+      "status": "PAYMENT_VERIFIED",
+      "merchantId": "m1",
+      "merchantName": "Bakso Solo Pak Kumis Tumpang",
+      "customerName": "Budi Tester",
+      "customerPhone": "081299990001",
+      "deliveryAddress": "Jl. Raya Tumpang No. 12",
+      "deliveryDetails": "",
+      "landmark": "",
+      "latitude": -7.9812,
+      "longitude": 112.6315,
+      "items": [
+        {
+          "menuItemId": "menu_1",
+          "name": "Bakso Komplit Super",
+          "price": 18000,
+          "quantity": 2
+        }
+      ],
+      "subtotal": 36000,
+      "deliveryFee": 22050,
+      "serviceFee": 2000,
+      "paymentExpiresAt": "2026-10-11T06:49:41.867Z",
+      "preOrderDate": "2026-10-15",
+      "id": "ord_s98phw9",
+      "createdAt": "2026-10-11T06:50:41.833Z",
+      "updatedAt": "2026-10-11T06:50:41.948Z",
+      "cancelReason": "Pembayaran terlambat telah dikonfirmasi manual oleh admin via mutasi bank",
+      "driverId": "d2",
+      "driverName": "Driver Joko Prasetyo"
+    },
+    {
+      "uniqueCode": 8,
+      "total": 42358,
+      "status": "COMPLETED",
+      "merchantId": "m1",
+      "merchantName": "Bakso Solo Pak Kumis Tumpang",
+      "customerName": "Multi-Instance Tester",
+      "customerPhone": "081299998888",
+      "deliveryAddress": "Jl. Concurrency Test 99",
+      "deliveryDetails": "",
+      "landmark": "",
+      "latitude": -7.98,
+      "longitude": 112.63,
+      "items": [
+        {
+          "menuItemId": "menu_1",
+          "name": "Bakso Komplit Super",
+          "price": 18000,
+          "quantity": 1
+        }
+      ],
+      "subtotal": 18000,
+      "deliveryFee": 22350,
+      "serviceFee": 2000,
+      "paymentExpiresAt": "2026-10-11T06:53:14.454Z",
+      "preOrderDate": "2026-10-12",
+      "id": "ord_8gz1y0h",
+      "createdAt": "2026-10-11T06:43:14.454Z",
+      "updatedAt": "2026-10-11T06:43:14.688Z",
+      "isSettled": true,
+      "settlementId": "set_kapak7t",
+      "settledAt": "2026-10-11T06:43:14.688Z"
+    },
+    {
+      "uniqueCode": 38,
+      "total": 60088,
+      "status": "COMPLETED",
+      "merchantId": "m1",
+      "merchantName": "Bakso Solo Pak Kumis Tumpang",
+      "customerName": "Ahmad Anti-Tamper",
+      "customerPhone": "081252144860",
+      "deliveryAddress": "Jl. Ahmad Yani No. 5, Tumpang",
+      "deliveryDetails": "",
+      "landmark": "",
+      "latitude": -7.9815,
+      "longitude": 112.632,
+      "items": [
+        {
+          "menuItemId": "menu_1",
+          "name": "Bakso Komplit Super",
+          "price": 18000,
+          "quantity": 2
+        }
+      ],
+      "subtotal": 36000,
+      "deliveryFee": 22050,
+      "serviceFee": 2000,
+      "paymentExpiresAt": "2026-10-11T06:34:45.269Z",
+      "preOrderDate": "2026-10-12",
+      "id": "ord_yj2ptwr",
+      "createdAt": "2026-10-11T06:36:45.205Z",
+      "updatedAt": "2026-10-11T06:36:45.513Z",
+      "cancelReason": "Pembayaran telah dicek mutasi bank oleh finance",
+      "driverId": "d1",
+      "driverName": "Driver Budi Santoso",
+      "deliveryProof": "https://images.unsplash.com/mock-delivery-proof.jpg",
+      "isSettled": true,
+      "settlementId": "set_or5ttcf",
+      "settledAt": "2026-10-11T06:36:45.513Z"
+    },
+    {
+      "uniqueCode": 56,
+      "total": 60106,
+      "status": "COMPLETED",
+      "merchantId": "m1",
+      "merchantName": "Bakso Solo Pak Kumis Tumpang",
+      "customerName": "Ahmad Anti-Tamper",
+      "customerPhone": "081272117129",
+      "deliveryAddress": "Jl. Ahmad Yani No. 5, Tumpang",
+      "deliveryDetails": "",
+      "landmark": "",
+      "latitude": -7.9815,
+      "longitude": 112.632,
+      "items": [
+        {
+          "menuItemId": "menu_1",
+          "name": "Bakso Komplit Super",
+          "price": 18000,
+          "quantity": 2
+        }
+      ],
+      "subtotal": 36000,
+      "deliveryFee": 22050,
+      "serviceFee": 2000,
+      "paymentExpiresAt": "2026-10-11T06:23:26.737Z",
+      "preOrderDate": "2026-10-12",
+      "id": "ord_w72soae",
+      "createdAt": "2026-10-11T06:25:26.697Z",
+      "updatedAt": "2026-10-11T06:25:26.995Z",
+      "cancelReason": "Pembayaran telah dicek mutasi bank oleh finance",
+      "driverId": "d1",
+      "driverName": "Driver Budi Santoso",
+      "deliveryProof": "https://images.unsplash.com/mock-delivery-proof.jpg",
+      "isSettled": true,
+      "settlementId": "set_1170x4l",
+      "settledAt": "2026-10-11T06:25:26.995Z"
+    },
+    {
+      "uniqueCode": 50,
+      "total": 60100,
+      "status": "COMPLETED",
+      "merchantId": "m1",
+      "merchantName": "Bakso Solo Pak Kumis Tumpang",
+      "customerName": "Ahmad Anti-Tamper",
+      "customerPhone": "081292763341",
+      "deliveryAddress": "Jl. Ahmad Yani No. 5, Tumpang",
+      "deliveryDetails": "",
+      "landmark": "",
+      "latitude": -7.9815,
+      "longitude": 112.632,
+      "items": [
+        {
+          "menuItemId": "menu_1",
+          "name": "Bakso Komplit Super",
+          "price": 18000,
+          "quantity": 2
+        }
+      ],
+      "subtotal": 36000,
+      "deliveryFee": 22050,
+      "serviceFee": 2000,
+      "paymentExpiresAt": "2026-10-11T06:22:23.024Z",
+      "preOrderDate": "2026-10-12",
+      "id": "ord_438kxfq",
+      "createdAt": "2026-10-11T06:24:22.971Z",
+      "updatedAt": "2026-10-11T06:24:23.280Z",
+      "cancelReason": "Pembayaran telah dicek mutasi bank oleh finance",
+      "driverId": "d1",
+      "driverName": "Driver Budi Santoso",
+      "deliveryProof": "https://images.unsplash.com/mock-delivery-proof.jpg",
+      "isSettled": true,
+      "settlementId": "set_a0xf4f7",
+      "settledAt": "2026-10-11T06:24:23.280Z"
+    },
+    {
+      "uniqueCode": 32,
+      "total": 60082,
+      "status": "PAYMENT_VERIFIED",
+      "merchantId": "m1",
+      "merchantName": "Bakso Solo Pak Kumis Tumpang",
+      "customerName": "Ahmad Anti-Tamper",
+      "customerPhone": "081271922345",
+      "deliveryAddress": "Jl. Ahmad Yani No. 5, Tumpang",
+      "deliveryDetails": "",
+      "landmark": "",
+      "latitude": -7.9815,
+      "longitude": 112.632,
+      "items": [
+        {
+          "menuItemId": "menu_1",
+          "name": "Bakso Komplit Super",
+          "price": 18000,
+          "quantity": 2
+        }
+      ],
+      "subtotal": 36000,
+      "deliveryFee": 22050,
+      "serviceFee": 2000,
+      "paymentExpiresAt": "2026-10-11T06:20:02.476Z",
+      "preOrderDate": "2026-10-12",
+      "id": "ord_strefa0",
+      "createdAt": "2026-10-11T06:22:02.417Z",
+      "updatedAt": "2026-10-11T06:22:02.553Z",
+      "cancelReason": "Pembayaran telah dicek mutasi bank oleh finance",
+      "driverId": "d1",
+      "driverName": "Driver Budi Santoso"
+    },
+    {
+      "uniqueCode": 45,
+      "total": 60095,
+      "status": "WAITING_PAYMENT_VERIFICATION",
+      "merchantId": "m1",
+      "merchantName": "Bakso Solo Pak Kumis Tumpang",
+      "customerName": "Ahmad Anti-Tamper",
+      "customerPhone": "081299990001",
+      "deliveryAddress": "Jl. Ahmad Yani No. 5, Tumpang",
+      "deliveryDetails": "",
+      "landmark": "",
+      "latitude": -7.9815,
+      "longitude": 112.632,
+      "items": [
+        {
+          "menuItemId": "menu_1",
+          "name": "Bakso Komplit Super",
+          "price": 18000,
+          "quantity": 2
+        }
+      ],
+      "subtotal": 36000,
+      "deliveryFee": 22050,
+      "serviceFee": 2000,
+      "paymentExpiresAt": "2026-10-11T06:30:05.931Z",
+      "preOrderDate": "",
+      "id": "ord_rnqmkro",
+      "createdAt": "2026-10-11T06:20:05.931Z",
+      "updatedAt": "2026-10-11T06:20:05.988Z",
+      "paymentProof": "https://images.unsplash.com/mock-receipt.jpg"
+    },
+    {
+      "uniqueCode": 22,
+      "total": 42372,
+      "status": "COMPLETED",
+      "merchantId": "m1",
+      "merchantName": "Bakso Solo Pak Kumis Tumpang",
+      "customerName": "Multi-Instance Tester",
+      "customerPhone": "081299998888",
+      "deliveryAddress": "Jl. Concurrency Test 99",
+      "deliveryDetails": "",
+      "landmark": "",
+      "latitude": -7.98,
+      "longitude": 112.63,
+      "items": [
+        {
+          "menuItemId": "menu_1",
+          "name": "Bakso Komplit Super",
+          "price": 18000,
+          "quantity": 1
+        }
+      ],
+      "subtotal": 18000,
+      "deliveryFee": 22350,
+      "serviceFee": 2000,
+      "paymentExpiresAt": "2026-10-11T06:22:14.993Z",
+      "preOrderDate": "",
+      "id": "ord_ujcgnsl",
+      "createdAt": "2026-10-11T06:12:14.994Z",
+      "updatedAt": "2026-10-11T06:12:15.235Z",
+      "isSettled": true,
+      "settlementId": "set_mga3w4a",
+      "settledAt": "2026-10-11T06:12:15.235Z"
+    },
+    {
+      "uniqueCode": 39,
+      "total": 60239,
+      "status": "COMPLETED",
+      "merchantId": "m1",
+      "merchantName": "Bakso Solo Pak Kumis Tumpang",
+      "customerName": "Tester B",
+      "customerPhone": "081200000002",
+      "deliveryAddress": "Jl. Uji B",
+      "deliveryDetails": "",
+      "landmark": "",
+      "latitude": -7.981,
+      "longitude": 112.631,
+      "items": [
+        {
+          "menuItemId": "menu_1",
+          "name": "Bakso Komplit Super",
+          "price": 18000,
+          "quantity": 2
+        }
+      ],
+      "subtotal": 36000,
+      "deliveryFee": 22200,
+      "serviceFee": 2000,
+      "paymentExpiresAt": "2026-10-11T06:22:03.832Z",
+      "preOrderDate": "",
+      "id": "ord_g1j3o4o",
+      "createdAt": "2026-10-11T06:12:03.832Z",
+      "updatedAt": "2026-10-11T06:12:03.924Z",
+      "isSettled": true,
+      "settlementId": "set_puj3jpt",
+      "settledAt": "2026-10-11T06:12:03.924Z"
+    },
+    {
+      "uniqueCode": 1,
+      "total": 42201,
+      "status": "COMPLETED",
+      "merchantId": "m1",
+      "merchantName": "Bakso Solo Pak Kumis Tumpang",
+      "customerName": "Tester A",
+      "customerPhone": "081200000001",
+      "deliveryAddress": "Jl. Uji A",
+      "deliveryDetails": "",
+      "landmark": "",
+      "latitude": -7.981,
+      "longitude": 112.631,
+      "items": [
+        {
+          "menuItemId": "menu_1",
+          "name": "Bakso Komplit Super",
+          "price": 18000,
+          "quantity": 1
+        }
+      ],
+      "subtotal": 18000,
+      "deliveryFee": 22200,
+      "serviceFee": 2000,
+      "paymentExpiresAt": "2026-10-11T06:22:03.805Z",
+      "preOrderDate": "",
+      "id": "ord_unu7r0v",
+      "createdAt": "2026-10-11T06:12:03.805Z",
+      "updatedAt": "2026-10-11T06:12:03.924Z",
+      "isSettled": true,
+      "settlementId": "set_puj3jpt",
+      "settledAt": "2026-10-11T06:12:03.924Z"
+    },
+    {
+      "uniqueCode": 32,
+      "total": 60082,
+      "status": "PAYMENT_VERIFIED",
+      "merchantId": "m1",
+      "merchantName": "Bakso Solo Pak Kumis Tumpang",
+      "customerName": "Budi Tester",
+      "customerPhone": "081299990001",
+      "deliveryAddress": "Jl. Raya Tumpang No. 12",
+      "deliveryDetails": "",
+      "landmark": "",
+      "latitude": -7.9812,
+      "longitude": 112.6315,
+      "items": [
+        {
+          "menuItemId": "menu_1",
+          "name": "Bakso Komplit Super",
+          "price": 18000,
+          "quantity": 2
+        }
+      ],
+      "subtotal": 36000,
+      "deliveryFee": 22050,
+      "serviceFee": 2000,
+      "paymentExpiresAt": "2026-10-11T06:11:03.683Z",
+      "preOrderDate": "",
+      "id": "ord_y905k0v",
+      "createdAt": "2026-10-11T06:12:03.661Z",
+      "updatedAt": "2026-10-11T06:12:03.777Z",
+      "cancelReason": "Pembayaran terlambat telah dikonfirmasi manual oleh admin via mutasi bank",
+      "driverId": "d2",
+      "driverName": "Driver Joko Prasetyo"
+    },
     {
       "uniqueCode": 52,
       "total": 25052,
@@ -1228,6 +1707,118 @@
   ],
   "settlements": [
     {
+      "id": "set_g61du09",
+      "merchantId": "m1",
+      "merchantName": "Bakso Solo Pak Kumis Tumpang",
+      "orderCount": 1,
+      "totalSales": 18000,
+      "totalCommission": 1800,
+      "amountToPay": 16200,
+      "status": "WAITING_CONFIRMATION",
+      "bankName": "Bank Mandiri",
+      "bankAccount": "1440023456789",
+      "bankHolder": "Wahyudi Kumis",
+      "createdAt": "2026-10-11T06:50:54.312Z"
+    },
+    {
+      "id": "set_bow7kkk",
+      "merchantId": "m1",
+      "merchantName": "Bakso Solo Pak Kumis Tumpang",
+      "orderCount": 2,
+      "totalSales": 54000,
+      "totalCommission": 5400,
+      "amountToPay": 48600,
+      "status": "WAITING_CONFIRMATION",
+      "bankName": "Bank Mandiri",
+      "bankAccount": "1440023456789",
+      "bankHolder": "Wahyudi Kumis",
+      "createdAt": "2026-10-11T06:50:42.077Z"
+    },
+    {
+      "id": "set_kapak7t",
+      "merchantId": "m1",
+      "merchantName": "Bakso Solo Pak Kumis Tumpang",
+      "orderCount": 1,
+      "totalSales": 18000,
+      "totalCommission": 1800,
+      "amountToPay": 16200,
+      "status": "WAITING_CONFIRMATION",
+      "bankName": "Bank Mandiri",
+      "bankAccount": "1440023456789",
+      "bankHolder": "Wahyudi Kumis",
+      "createdAt": "2026-10-11T06:43:14.688Z"
+    },
+    {
+      "id": "set_or5ttcf",
+      "merchantId": "m1",
+      "merchantName": "Bakso Solo Pak Kumis Tumpang",
+      "orderCount": 1,
+      "totalSales": 36000,
+      "totalCommission": 3600,
+      "amountToPay": 32400,
+      "status": "WAITING_CONFIRMATION",
+      "bankName": "Bank Mandiri",
+      "bankAccount": "1440023456789",
+      "bankHolder": "Wahyudi Kumis",
+      "createdAt": "2026-10-11T06:36:45.513Z"
+    },
+    {
+      "id": "set_1170x4l",
+      "merchantId": "m1",
+      "merchantName": "Bakso Solo Pak Kumis Tumpang",
+      "orderCount": 1,
+      "totalSales": 36000,
+      "totalCommission": 3600,
+      "amountToPay": 32400,
+      "status": "WAITING_CONFIRMATION",
+      "bankName": "Bank Mandiri",
+      "bankAccount": "1440023456789",
+      "bankHolder": "Wahyudi Kumis",
+      "createdAt": "2026-10-11T06:25:26.995Z"
+    },
+    {
+      "id": "set_a0xf4f7",
+      "merchantId": "m1",
+      "merchantName": "Bakso Solo Pak Kumis Tumpang",
+      "orderCount": 1,
+      "totalSales": 36000,
+      "totalCommission": 3600,
+      "amountToPay": 32400,
+      "status": "WAITING_CONFIRMATION",
+      "bankName": "Bank Mandiri",
+      "bankAccount": "1440023456789",
+      "bankHolder": "Wahyudi Kumis",
+      "createdAt": "2026-10-11T06:24:23.280Z"
+    },
+    {
+      "id": "set_mga3w4a",
+      "merchantId": "m1",
+      "merchantName": "Bakso Solo Pak Kumis Tumpang",
+      "orderCount": 1,
+      "totalSales": 18000,
+      "totalCommission": 1800,
+      "amountToPay": 16200,
+      "status": "WAITING_CONFIRMATION",
+      "bankName": "Bank Mandiri",
+      "bankAccount": "1440023456789",
+      "bankHolder": "Wahyudi Kumis",
+      "createdAt": "2026-10-11T06:12:15.235Z"
+    },
+    {
+      "id": "set_puj3jpt",
+      "merchantId": "m1",
+      "merchantName": "Bakso Solo Pak Kumis Tumpang",
+      "orderCount": 2,
+      "totalSales": 54000,
+      "totalCommission": 5400,
+      "amountToPay": 48600,
+      "status": "WAITING_CONFIRMATION",
+      "bankName": "Bank Mandiri",
+      "bankAccount": "1440023456789",
+      "bankHolder": "Wahyudi Kumis",
+      "createdAt": "2026-10-11T06:12:03.924Z"
+    },
+    {
       "id": "set_cnd9qmo",
       "merchantId": "m1",
       "merchantName": "Bakso Solo Pak Kumis Tumpang",
@@ -1328,6 +1919,934 @@
     }
   ],
   "auditLogs": [
+    {
+      "id": "log_nfenv9o",
+      "action": "Updated",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Updated order ord_45by9s2 status from WAITING_PAYMENT to COMPLETED",
+      "createdAt": "2026-10-11T06:50:54.301Z"
+    },
+    {
+      "id": "log_l1n37da",
+      "action": "Created",
+      "userId": "CUSTOMER",
+      "role": "CUSTOMER",
+      "details": "Created order ord_45by9s2 Total: Rp 42,373 (UniqueCode: 23)",
+      "createdAt": "2026-10-11T06:50:54.120Z"
+    },
+    {
+      "id": "log_kserjq6",
+      "action": "Created",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Created settlement set_bow7kkk of Rp 48,600 for Bakso Solo Pak Kumis Tumpang (2 pesanan)",
+      "createdAt": "2026-10-11T06:50:42.126Z"
+    },
+    {
+      "id": "log_yhj4fev",
+      "action": "Updated",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Updated order ord_1mh43le status from WAITING_PAYMENT to COMPLETED",
+      "createdAt": "2026-10-11T06:50:42.055Z"
+    },
+    {
+      "id": "log_34d0lgt",
+      "action": "Updated",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Updated order ord_kukadoh status from WAITING_PAYMENT to COMPLETED",
+      "createdAt": "2026-10-11T06:50:42.030Z"
+    },
+    {
+      "id": "log_uhrvc7x",
+      "action": "Created",
+      "userId": "CUSTOMER",
+      "role": "CUSTOMER",
+      "details": "Created order ord_1mh43le Total: Rp 60,265 (UniqueCode: 65)",
+      "createdAt": "2026-10-11T06:50:42.003Z"
+    },
+    {
+      "id": "log_bfe8u8l",
+      "action": "Created",
+      "userId": "CUSTOMER",
+      "role": "CUSTOMER",
+      "details": "Created order ord_kukadoh Total: Rp 42,269 (UniqueCode: 69)",
+      "createdAt": "2026-10-11T06:50:41.981Z"
+    },
+    {
+      "id": "log_esv53yn",
+      "action": "Updated",
+      "userId": "SYSTEM",
+      "role": "SYSTEM",
+      "details": "Updated order ord_s98phw9 details",
+      "createdAt": "2026-10-11T06:50:41.955Z"
+    },
+    {
+      "id": "log_okhdwq8",
+      "action": "Updated",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Updated order ord_s98phw9 status from EXPIRED to PAYMENT_VERIFIED",
+      "createdAt": "2026-10-11T06:50:41.938Z"
+    },
+    {
+      "id": "log_r15m0an",
+      "action": "Admin",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Admin explicitly approved late payment for expired order ord_s98phw9",
+      "createdAt": "2026-10-11T06:50:41.923Z"
+    },
+    {
+      "id": "log_9ii85tm",
+      "action": "Updated",
+      "userId": "SYSTEM",
+      "role": "SYSTEM",
+      "details": "Updated order ord_s98phw9 status from WAITING_PAYMENT to EXPIRED",
+      "createdAt": "2026-10-11T06:50:41.900Z"
+    },
+    {
+      "id": "log_2uiw9og",
+      "action": "Updated",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Updated order ord_s98phw9 details",
+      "createdAt": "2026-10-11T06:50:41.879Z"
+    },
+    {
+      "id": "log_upj2gig",
+      "action": "Created",
+      "userId": "CUSTOMER",
+      "role": "CUSTOMER",
+      "details": "Created order ord_s98phw9 Total: Rp 60,081 (UniqueCode: 31)",
+      "createdAt": "2026-10-11T06:50:41.856Z"
+    },
+    {
+      "id": "log_bf7tvs0",
+      "action": "Driver",
+      "userId": "d1",
+      "role": "DRIVER",
+      "details": "Driver Driver Budi Santoso logged in",
+      "createdAt": "2026-10-11T06:50:41.761Z"
+    },
+    {
+      "id": "log_wqnjjkz",
+      "action": "Merchant",
+      "userId": "m2",
+      "role": "MERCHANT",
+      "details": "Merchant Sate Khas Malang Tumpang logged in",
+      "createdAt": "2026-10-11T06:50:41.725Z"
+    },
+    {
+      "id": "log_9587z75",
+      "action": "Merchant",
+      "userId": "m1",
+      "role": "MERCHANT",
+      "details": "Merchant Bakso Solo Pak Kumis Tumpang logged in",
+      "createdAt": "2026-10-11T06:50:41.704Z"
+    },
+    {
+      "id": "log_ylb5gfx",
+      "action": "Admin",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Admin tumpanggo@gmail.com logged in successfully",
+      "createdAt": "2026-10-11T06:50:41.638Z"
+    },
+    {
+      "id": "log_3mxd1j2",
+      "action": "Driver",
+      "userId": "d1",
+      "role": "DRIVER",
+      "details": "Driver Driver Budi Santoso logged in",
+      "createdAt": "2026-10-11T06:49:55.614Z"
+    },
+    {
+      "id": "log_6jnn9jk",
+      "action": "Merchant",
+      "userId": "m2",
+      "role": "MERCHANT",
+      "details": "Merchant Sate Khas Malang Tumpang logged in",
+      "createdAt": "2026-10-11T06:49:55.582Z"
+    },
+    {
+      "id": "log_ek927e2",
+      "action": "Merchant",
+      "userId": "m1",
+      "role": "MERCHANT",
+      "details": "Merchant Bakso Solo Pak Kumis Tumpang logged in",
+      "createdAt": "2026-10-11T06:49:55.560Z"
+    },
+    {
+      "id": "log_pss1eti",
+      "action": "Admin",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Admin tumpanggo@gmail.com logged in successfully",
+      "createdAt": "2026-10-11T06:49:55.500Z"
+    },
+    {
+      "id": "log_k45y0fw",
+      "action": "Created",
+      "userId": "admin_instance_A",
+      "role": "ADMIN",
+      "details": "Created settlement set_kapak7t of Rp 16,200 for Bakso Solo Pak Kumis Tumpang (1 pesanan)",
+      "createdAt": "2026-10-11T06:43:14.999Z"
+    },
+    {
+      "id": "log_8j1qt5l",
+      "action": "Updated",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Updated order ord_8gz1y0h status from WAITING_PAYMENT to COMPLETED",
+      "createdAt": "2026-10-11T06:43:14.678Z"
+    },
+    {
+      "id": "log_xzjx9t5",
+      "action": "Created",
+      "userId": "CUSTOMER",
+      "role": "CUSTOMER",
+      "details": "Created order ord_8gz1y0h Total: Rp 42,358 (UniqueCode: 8)",
+      "createdAt": "2026-10-11T06:43:14.477Z"
+    },
+    {
+      "id": "log_7s4nvvo",
+      "action": "Created",
+      "userId": "CUSTOMER",
+      "role": "CUSTOMER",
+      "details": "Created order ord_9un96ff Total: Rp 42,400 (UniqueCode: 50)",
+      "createdAt": "2026-10-11T06:37:17.256Z"
+    },
+    {
+      "id": "log_hrv8l2y",
+      "action": "Redeemed",
+      "userId": "m1",
+      "role": "MERCHANT",
+      "details": "Redeemed license key TUMPANG-PREM-U1GO2S",
+      "createdAt": "2026-10-11T06:36:45.682Z"
+    },
+    {
+      "id": "log_mny1uyc",
+      "action": "Created",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Created license key TUMPANG-PREM-U1GO2S for 30 days",
+      "createdAt": "2026-10-11T06:36:45.621Z"
+    },
+    {
+      "id": "log_600lsju",
+      "action": "Created",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Created settlement set_or5ttcf of Rp 32,400 for Bakso Solo Pak Kumis Tumpang (1 pesanan)",
+      "createdAt": "2026-10-11T06:36:45.576Z"
+    },
+    {
+      "id": "log_q2ihvsv",
+      "action": "Updated",
+      "userId": "d1",
+      "role": "DRIVER",
+      "details": "Updated order ord_yj2ptwr status from ORDER_PICKED_UP to COMPLETED",
+      "createdAt": "2026-10-11T06:36:45.494Z"
+    },
+    {
+      "id": "log_xc52vik",
+      "action": "Updated",
+      "userId": "d1",
+      "role": "DRIVER",
+      "details": "Updated order ord_yj2ptwr status from READY_FOR_PICKUP to ORDER_PICKED_UP",
+      "createdAt": "2026-10-11T06:36:45.464Z"
+    },
+    {
+      "id": "log_g9fvaxa",
+      "action": "Assigned",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Assigned driver Driver Budi Santoso to order ord_yj2ptwr",
+      "createdAt": "2026-10-11T06:36:45.441Z"
+    },
+    {
+      "id": "log_ehmyqi4",
+      "action": "Updated",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Updated order ord_yj2ptwr details",
+      "createdAt": "2026-10-11T06:36:45.433Z"
+    },
+    {
+      "id": "log_nvd1g3o",
+      "action": "Updated",
+      "userId": "m1",
+      "role": "MERCHANT",
+      "details": "Updated order ord_yj2ptwr status from COOKING to READY_FOR_PICKUP",
+      "createdAt": "2026-10-11T06:36:45.408Z"
+    },
+    {
+      "id": "log_z3yc2rm",
+      "action": "Updated",
+      "userId": "m1",
+      "role": "MERCHANT",
+      "details": "Updated order ord_yj2ptwr status from PAYMENT_VERIFIED to COOKING",
+      "createdAt": "2026-10-11T06:36:45.388Z"
+    },
+    {
+      "id": "log_5j8cihj",
+      "action": "Updated",
+      "userId": "SYSTEM",
+      "role": "SYSTEM",
+      "details": "Updated order ord_yj2ptwr details",
+      "createdAt": "2026-10-11T06:36:45.361Z"
+    },
+    {
+      "id": "log_a36wwmj",
+      "action": "Updated",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Updated order ord_yj2ptwr status from EXPIRED to PAYMENT_VERIFIED",
+      "createdAt": "2026-10-11T06:36:45.339Z"
+    },
+    {
+      "id": "log_2xz94n5",
+      "action": "Admin",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Admin explicitly approved late payment for expired order ord_yj2ptwr",
+      "createdAt": "2026-10-11T06:36:45.321Z"
+    },
+    {
+      "id": "log_9mbi85j",
+      "action": "Updated",
+      "userId": "SYSTEM",
+      "role": "SYSTEM",
+      "details": "Updated order ord_yj2ptwr status from WAITING_PAYMENT to EXPIRED",
+      "createdAt": "2026-10-11T06:36:45.303Z"
+    },
+    {
+      "id": "log_9kprth3",
+      "action": "Updated",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Updated order ord_yj2ptwr details",
+      "createdAt": "2026-10-11T06:36:45.282Z"
+    },
+    {
+      "id": "log_09ec9sc",
+      "action": "Created",
+      "userId": "CUSTOMER",
+      "role": "CUSTOMER",
+      "details": "Created order ord_yj2ptwr Total: Rp 60,088 (UniqueCode: 38)",
+      "createdAt": "2026-10-11T06:36:45.237Z"
+    },
+    {
+      "id": "log_dgjkiv5",
+      "action": "Driver",
+      "userId": "d1",
+      "role": "DRIVER",
+      "details": "Driver Driver Budi Santoso logged in",
+      "createdAt": "2026-10-11T06:36:45.166Z"
+    },
+    {
+      "id": "log_n3ecu6r",
+      "action": "Merchant",
+      "userId": "m1",
+      "role": "MERCHANT",
+      "details": "Merchant Bakso Solo Pak Kumis Tumpang logged in",
+      "createdAt": "2026-10-11T06:36:45.135Z"
+    },
+    {
+      "id": "log_pw4t3ie",
+      "action": "Admin",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Admin tumpanggo@gmail.com logged in successfully",
+      "createdAt": "2026-10-11T06:36:45.078Z"
+    },
+    {
+      "id": "log_21ca89s",
+      "action": "Redeemed",
+      "userId": "m1",
+      "role": "MERCHANT",
+      "details": "Redeemed license key TUMPANG-PREM-X6ERIH",
+      "createdAt": "2026-10-11T06:25:27.121Z"
+    },
+    {
+      "id": "log_odgjgnl",
+      "action": "Created",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Created license key TUMPANG-PREM-X6ERIH for 30 days",
+      "createdAt": "2026-10-11T06:25:27.076Z"
+    },
+    {
+      "id": "log_bfytn92",
+      "action": "Created",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Created settlement set_1170x4l of Rp 32,400 for Bakso Solo Pak Kumis Tumpang (1 pesanan)",
+      "createdAt": "2026-10-11T06:25:27.033Z"
+    },
+    {
+      "id": "log_lh19az7",
+      "action": "Updated",
+      "userId": "d1",
+      "role": "DRIVER",
+      "details": "Updated order ord_w72soae status from ORDER_PICKED_UP to COMPLETED",
+      "createdAt": "2026-10-11T06:25:26.976Z"
+    },
+    {
+      "id": "log_db3fkkj",
+      "action": "Updated",
+      "userId": "d1",
+      "role": "DRIVER",
+      "details": "Updated order ord_w72soae status from READY_FOR_PICKUP to ORDER_PICKED_UP",
+      "createdAt": "2026-10-11T06:25:26.947Z"
+    },
+    {
+      "id": "log_gnmpwj1",
+      "action": "Assigned",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Assigned driver Driver Budi Santoso to order ord_w72soae",
+      "createdAt": "2026-10-11T06:25:26.917Z"
+    },
+    {
+      "id": "log_h9j1kj0",
+      "action": "Updated",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Updated order ord_w72soae details",
+      "createdAt": "2026-10-11T06:25:26.909Z"
+    },
+    {
+      "id": "log_1nwz55m",
+      "action": "Updated",
+      "userId": "m1",
+      "role": "MERCHANT",
+      "details": "Updated order ord_w72soae status from COOKING to READY_FOR_PICKUP",
+      "createdAt": "2026-10-11T06:25:26.886Z"
+    },
+    {
+      "id": "log_4k683um",
+      "action": "Updated",
+      "userId": "m1",
+      "role": "MERCHANT",
+      "details": "Updated order ord_w72soae status from PAYMENT_VERIFIED to COOKING",
+      "createdAt": "2026-10-11T06:25:26.861Z"
+    },
+    {
+      "id": "log_w2dhiwh",
+      "action": "Updated",
+      "userId": "SYSTEM",
+      "role": "SYSTEM",
+      "details": "Updated order ord_w72soae details",
+      "createdAt": "2026-10-11T06:25:26.833Z"
+    },
+    {
+      "id": "log_dydu5ou",
+      "action": "Updated",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Updated order ord_w72soae status from EXPIRED to PAYMENT_VERIFIED",
+      "createdAt": "2026-10-11T06:25:26.815Z"
+    },
+    {
+      "id": "log_70d7uif",
+      "action": "Admin",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Admin explicitly approved late payment for expired order ord_w72soae",
+      "createdAt": "2026-10-11T06:25:26.798Z"
+    },
+    {
+      "id": "log_cdw9cvw",
+      "action": "Updated",
+      "userId": "SYSTEM",
+      "role": "SYSTEM",
+      "details": "Updated order ord_w72soae status from WAITING_PAYMENT to EXPIRED",
+      "createdAt": "2026-10-11T06:25:26.773Z"
+    },
+    {
+      "id": "log_om2o9q5",
+      "action": "Updated",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Updated order ord_w72soae details",
+      "createdAt": "2026-10-11T06:25:26.749Z"
+    },
+    {
+      "id": "log_2jo4ah4",
+      "action": "Created",
+      "userId": "CUSTOMER",
+      "role": "CUSTOMER",
+      "details": "Created order ord_w72soae Total: Rp 60,106 (UniqueCode: 56)",
+      "createdAt": "2026-10-11T06:25:26.706Z"
+    },
+    {
+      "id": "log_hgxna7i",
+      "action": "Driver",
+      "userId": "d1",
+      "role": "DRIVER",
+      "details": "Driver Driver Budi Santoso logged in",
+      "createdAt": "2026-10-11T06:25:26.656Z"
+    },
+    {
+      "id": "log_e3wpp2a",
+      "action": "Merchant",
+      "userId": "m1",
+      "role": "MERCHANT",
+      "details": "Merchant Bakso Solo Pak Kumis Tumpang logged in",
+      "createdAt": "2026-10-11T06:25:26.628Z"
+    },
+    {
+      "id": "log_usa9mh1",
+      "action": "Admin",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Admin tumpanggo@gmail.com logged in successfully",
+      "createdAt": "2026-10-11T06:25:26.572Z"
+    },
+    {
+      "id": "log_w7r7lvv",
+      "action": "Created",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Created settlement set_a0xf4f7 of Rp 32,400 for Bakso Solo Pak Kumis Tumpang (1 pesanan)",
+      "createdAt": "2026-10-11T06:24:23.321Z"
+    },
+    {
+      "id": "log_9g3yugh",
+      "action": "Updated",
+      "userId": "d1",
+      "role": "DRIVER",
+      "details": "Updated order ord_438kxfq status from ORDER_PICKED_UP to COMPLETED",
+      "createdAt": "2026-10-11T06:24:23.254Z"
+    },
+    {
+      "id": "log_p8te3vq",
+      "action": "Updated",
+      "userId": "d1",
+      "role": "DRIVER",
+      "details": "Updated order ord_438kxfq status from READY_FOR_PICKUP to ORDER_PICKED_UP",
+      "createdAt": "2026-10-11T06:24:23.224Z"
+    },
+    {
+      "id": "log_jpfk884",
+      "action": "Assigned",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Assigned driver Driver Budi Santoso to order ord_438kxfq",
+      "createdAt": "2026-10-11T06:24:23.200Z"
+    },
+    {
+      "id": "log_f9vjqt1",
+      "action": "Updated",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Updated order ord_438kxfq details",
+      "createdAt": "2026-10-11T06:24:23.191Z"
+    },
+    {
+      "id": "log_s125hx0",
+      "action": "Updated",
+      "userId": "m1",
+      "role": "MERCHANT",
+      "details": "Updated order ord_438kxfq status from COOKING to READY_FOR_PICKUP",
+      "createdAt": "2026-10-11T06:24:23.163Z"
+    },
+    {
+      "id": "log_gds24ik",
+      "action": "Updated",
+      "userId": "m1",
+      "role": "MERCHANT",
+      "details": "Updated order ord_438kxfq status from PAYMENT_VERIFIED to COOKING",
+      "createdAt": "2026-10-11T06:24:23.140Z"
+    },
+    {
+      "id": "log_2m6tc0q",
+      "action": "Updated",
+      "userId": "SYSTEM",
+      "role": "SYSTEM",
+      "details": "Updated order ord_438kxfq details",
+      "createdAt": "2026-10-11T06:24:23.114Z"
+    },
+    {
+      "id": "log_9pwullh",
+      "action": "Updated",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Updated order ord_438kxfq status from EXPIRED to PAYMENT_VERIFIED",
+      "createdAt": "2026-10-11T06:24:23.099Z"
+    },
+    {
+      "id": "log_2gri2e6",
+      "action": "Admin",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Admin explicitly approved late payment for expired order ord_438kxfq",
+      "createdAt": "2026-10-11T06:24:23.084Z"
+    },
+    {
+      "id": "log_sdpz3u7",
+      "action": "Updated",
+      "userId": "SYSTEM",
+      "role": "SYSTEM",
+      "details": "Updated order ord_438kxfq status from WAITING_PAYMENT to EXPIRED",
+      "createdAt": "2026-10-11T06:24:23.062Z"
+    },
+    {
+      "id": "log_b3gzif2",
+      "action": "Updated",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Updated order ord_438kxfq details",
+      "createdAt": "2026-10-11T06:24:23.038Z"
+    },
+    {
+      "id": "log_nbqg3x6",
+      "action": "Created",
+      "userId": "CUSTOMER",
+      "role": "CUSTOMER",
+      "details": "Created order ord_438kxfq Total: Rp 60,100 (UniqueCode: 50)",
+      "createdAt": "2026-10-11T06:24:22.995Z"
+    },
+    {
+      "id": "log_2unz332",
+      "action": "Driver",
+      "userId": "d1",
+      "role": "DRIVER",
+      "details": "Driver Driver Budi Santoso logged in",
+      "createdAt": "2026-10-11T06:24:22.927Z"
+    },
+    {
+      "id": "log_mlmty9p",
+      "action": "Merchant",
+      "userId": "m1",
+      "role": "MERCHANT",
+      "details": "Merchant Bakso Solo Pak Kumis Tumpang logged in",
+      "createdAt": "2026-10-11T06:24:22.901Z"
+    },
+    {
+      "id": "log_ml1eskb",
+      "action": "Admin",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Admin tumpanggo@gmail.com logged in successfully",
+      "createdAt": "2026-10-11T06:24:22.832Z"
+    },
+    {
+      "id": "log_765vrod",
+      "action": "Merchant",
+      "userId": "m1",
+      "role": "MERCHANT",
+      "details": "Merchant Bakso Solo Pak Kumis Tumpang logged in",
+      "createdAt": "2026-10-11T06:23:54.681Z"
+    },
+    {
+      "id": "log_6qzzhyj",
+      "action": "Redeemed",
+      "userId": "m2",
+      "role": "MERCHANT",
+      "details": "Redeemed license key TUMPANG-PREM-ZTDYVGL9",
+      "createdAt": "2026-10-11T06:22:02.687Z"
+    },
+    {
+      "id": "log_mrvd5pq",
+      "action": "Updated",
+      "userId": "SYSTEM",
+      "role": "SYSTEM",
+      "details": "Updated order ord_strefa0 details",
+      "createdAt": "2026-10-11T06:22:02.561Z"
+    },
+    {
+      "id": "log_fv828ga",
+      "action": "Updated",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Updated order ord_strefa0 status from EXPIRED to PAYMENT_VERIFIED",
+      "createdAt": "2026-10-11T06:22:02.545Z"
+    },
+    {
+      "id": "log_gfipd78",
+      "action": "Admin",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Admin explicitly approved late payment for expired order ord_strefa0",
+      "createdAt": "2026-10-11T06:22:02.528Z"
+    },
+    {
+      "id": "log_ac0ei7j",
+      "action": "Updated",
+      "userId": "SYSTEM",
+      "role": "SYSTEM",
+      "details": "Updated order ord_strefa0 status from WAITING_PAYMENT to EXPIRED",
+      "createdAt": "2026-10-11T06:22:02.511Z"
+    },
+    {
+      "id": "log_m44qygd",
+      "action": "Updated",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Updated order ord_strefa0 details",
+      "createdAt": "2026-10-11T06:22:02.491Z"
+    },
+    {
+      "id": "log_gkfce7o",
+      "action": "Created",
+      "userId": "CUSTOMER",
+      "role": "CUSTOMER",
+      "details": "Created order ord_strefa0 Total: Rp 60,082 (UniqueCode: 32)",
+      "createdAt": "2026-10-11T06:22:02.442Z"
+    },
+    {
+      "id": "log_vs5qj34",
+      "action": "Driver",
+      "userId": "d1",
+      "role": "DRIVER",
+      "details": "Driver Driver Budi Santoso logged in",
+      "createdAt": "2026-10-11T06:22:02.380Z"
+    },
+    {
+      "id": "log_qhdfpg0",
+      "action": "Admin",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Admin tumpanggo@gmail.com logged in successfully",
+      "createdAt": "2026-10-11T06:22:02.323Z"
+    },
+    {
+      "id": "log_7vkx249",
+      "action": "Redeemed",
+      "userId": "m1",
+      "role": "MERCHANT",
+      "details": "Redeemed license key TUMPANG-PREM-FITRI-KUE",
+      "createdAt": "2026-10-11T06:20:51.053Z"
+    },
+    {
+      "id": "log_s2g0x3e",
+      "action": "Driver",
+      "userId": "d1",
+      "role": "DRIVER",
+      "details": "Driver Driver Budi Santoso logged in",
+      "createdAt": "2026-10-11T06:20:50.888Z"
+    },
+    {
+      "id": "log_fsvt40e",
+      "action": "Merchant",
+      "userId": "m1",
+      "role": "MERCHANT",
+      "details": "Merchant Bakso Solo Pak Kumis Tumpang logged in",
+      "createdAt": "2026-10-11T06:20:50.862Z"
+    },
+    {
+      "id": "log_5zhrjfa",
+      "action": "Admin",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Admin tumpanggo@gmail.com logged in successfully",
+      "createdAt": "2026-10-11T06:20:50.804Z"
+    },
+    {
+      "id": "log_ikea1s5",
+      "action": "Redeemed",
+      "userId": "m1",
+      "role": "MERCHANT",
+      "details": "Redeemed license key TUMPANG-KEY-1791696626005",
+      "createdAt": "2026-10-11T06:20:06.131Z"
+    },
+    {
+      "id": "log_dd1qxg6",
+      "action": "Updated",
+      "userId": "CUSTOMER",
+      "role": "CUSTOMER",
+      "details": "Updated order ord_rnqmkro status from WAITING_PAYMENT to WAITING_PAYMENT_VERIFICATION",
+      "createdAt": "2026-10-11T06:20:05.995Z"
+    },
+    {
+      "id": "log_azv9ugs",
+      "action": "Created",
+      "userId": "CUSTOMER",
+      "role": "CUSTOMER",
+      "details": "Created order ord_rnqmkro Total: Rp 60,095 (UniqueCode: 45)",
+      "createdAt": "2026-10-11T06:20:05.955Z"
+    },
+    {
+      "id": "log_uauxqss",
+      "action": "Driver",
+      "userId": "d1",
+      "role": "DRIVER",
+      "details": "Driver Driver Budi Santoso logged in",
+      "createdAt": "2026-10-11T06:20:05.897Z"
+    },
+    {
+      "id": "log_mfyyr09",
+      "action": "Merchant",
+      "userId": "m1",
+      "role": "MERCHANT",
+      "details": "Merchant Bakso Solo Pak Kumis Tumpang logged in",
+      "createdAt": "2026-10-11T06:20:05.870Z"
+    },
+    {
+      "id": "log_qol3sva",
+      "action": "Created",
+      "userId": "admin_instance_A",
+      "role": "ADMIN",
+      "details": "Created settlement set_mga3w4a of Rp 16,200 for Bakso Solo Pak Kumis Tumpang (1 pesanan)",
+      "createdAt": "2026-10-11T06:12:15.499Z"
+    },
+    {
+      "id": "log_5ugj31a",
+      "action": "Updated",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Updated order ord_ujcgnsl status from WAITING_PAYMENT to COMPLETED",
+      "createdAt": "2026-10-11T06:12:15.041Z"
+    },
+    {
+      "id": "log_otq6nev",
+      "action": "Created",
+      "userId": "CUSTOMER",
+      "role": "CUSTOMER",
+      "details": "Created order ord_ujcgnsl Total: Rp 42,372 (UniqueCode: 22)",
+      "createdAt": "2026-10-11T06:12:15.018Z"
+    },
+    {
+      "id": "log_3eo496j",
+      "action": "Created",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Created settlement set_puj3jpt of Rp 48,600 for Bakso Solo Pak Kumis Tumpang (2 pesanan)",
+      "createdAt": "2026-10-11T06:12:04.001Z"
+    },
+    {
+      "id": "log_xlviwbd",
+      "action": "Updated",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Updated order ord_g1j3o4o status from WAITING_PAYMENT to COMPLETED",
+      "createdAt": "2026-10-11T06:12:03.902Z"
+    },
+    {
+      "id": "log_jnnc2nz",
+      "action": "Updated",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Updated order ord_unu7r0v status from WAITING_PAYMENT to COMPLETED",
+      "createdAt": "2026-10-11T06:12:03.867Z"
+    },
+    {
+      "id": "log_l1fuoa7",
+      "action": "Created",
+      "userId": "CUSTOMER",
+      "role": "CUSTOMER",
+      "details": "Created order ord_g1j3o4o Total: Rp 60,239 (UniqueCode: 39)",
+      "createdAt": "2026-10-11T06:12:03.841Z"
+    },
+    {
+      "id": "log_gjlrciu",
+      "action": "Created",
+      "userId": "CUSTOMER",
+      "role": "CUSTOMER",
+      "details": "Created order ord_unu7r0v Total: Rp 42,201 (UniqueCode: 1)",
+      "createdAt": "2026-10-11T06:12:03.812Z"
+    },
+    {
+      "id": "log_ycjigvn",
+      "action": "Updated",
+      "userId": "SYSTEM",
+      "role": "SYSTEM",
+      "details": "Updated order ord_y905k0v details",
+      "createdAt": "2026-10-11T06:12:03.785Z"
+    },
+    {
+      "id": "log_0q8p54g",
+      "action": "Updated",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Updated order ord_y905k0v status from EXPIRED to PAYMENT_VERIFIED",
+      "createdAt": "2026-10-11T06:12:03.768Z"
+    },
+    {
+      "id": "log_3cktddd",
+      "action": "Admin",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Admin explicitly approved late payment for expired order ord_y905k0v",
+      "createdAt": "2026-10-11T06:12:03.748Z"
+    },
+    {
+      "id": "log_z1lpbo6",
+      "action": "Updated",
+      "userId": "SYSTEM",
+      "role": "SYSTEM",
+      "details": "Updated order ord_y905k0v status from WAITING_PAYMENT to EXPIRED",
+      "createdAt": "2026-10-11T06:12:03.719Z"
+    },
+    {
+      "id": "log_gqeh5r5",
+      "action": "Updated",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Updated order ord_y905k0v details",
+      "createdAt": "2026-10-11T06:12:03.698Z"
+    },
+    {
+      "id": "log_jncikz7",
+      "action": "Created",
+      "userId": "CUSTOMER",
+      "role": "CUSTOMER",
+      "details": "Created order ord_y905k0v Total: Rp 60,082 (UniqueCode: 32)",
+      "createdAt": "2026-10-11T06:12:03.671Z"
+    },
+    {
+      "id": "log_ayi4gic",
+      "action": "Driver",
+      "userId": "d1",
+      "role": "DRIVER",
+      "details": "Driver Driver Budi Santoso logged in",
+      "createdAt": "2026-10-11T06:12:03.605Z"
+    },
+    {
+      "id": "log_nt5oogr",
+      "action": "Merchant",
+      "userId": "m2",
+      "role": "MERCHANT",
+      "details": "Merchant Sate Khas Malang Tumpang logged in",
+      "createdAt": "2026-10-11T06:12:03.571Z"
+    },
+    {
+      "id": "log_wf568fk",
+      "action": "Merchant",
+      "userId": "m1",
+      "role": "MERCHANT",
+      "details": "Merchant Bakso Solo Pak Kumis Tumpang logged in",
+      "createdAt": "2026-10-11T06:12:03.543Z"
+    },
+    {
+      "id": "log_i2uciak",
+      "action": "Admin",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Admin tumpanggo@gmail.com logged in successfully",
+      "createdAt": "2026-10-11T06:12:03.482Z"
+    },
+    {
+      "id": "log_rvk414f",
+      "action": "Redeemed",
+      "userId": "m1",
+      "role": "MERCHANT",
+      "details": "Redeemed license key TEST-LIC-1791696676574",
+      "createdAt": "2026-10-11T05:31:16.599Z"
+    },
+    {
+      "id": "log_h0gij8f",
+      "action": "Created",
+      "userId": "admin",
+      "role": "ADMIN",
+      "details": "Created license key TEST-LIC-1791696676574 for 30 days",
+      "createdAt": "2026-10-11T05:31:16.582Z"
+    },
     {
       "id": "log_509abtm",
       "action": "Created",
@@ -2399,478 +3918,6 @@
       "action": "Created",
       "id": "log_7guqs1rcm",
       "createdAt": "2026-07-01T11:57:01.312Z"
-    },
-    {
-      "action": "Admin",
-      "userId": "admin",
-      "createdAt": "2026-07-23T08:08:36.840Z",
-      "id": "log_7kzqcy6uk",
-      "details": "Admin logged in successfully",
-      "role": "ADMIN"
-    },
-    {
-      "userId": "m1",
-      "details": "Updated merchant Bakso Solo Pak Kumis Tumpang fields: active",
-      "action": "Updated",
-      "role": "MERCHANT",
-      "createdAt": "2026-07-23T07:55:48.403Z",
-      "id": "log_7l5yz1awo"
-    },
-    {
-      "id": "log_81bsd8cy6",
-      "userId": "SYSTEM",
-      "role": "SYSTEM",
-      "createdAt": "2026-07-23T10:09:00.932Z",
-      "details": "Database initialized and seeded.",
-      "action": "Database"
-    },
-    {
-      "id": "log_8gubx7tra",
-      "role": "MERCHANT",
-      "createdAt": "2026-07-02T15:19:25.573Z",
-      "action": "Created",
-      "details": "Created menu item wec5",
-      "userId": "m_eeoltwv06"
-    },
-    {
-      "createdAt": "2026-07-01T12:13:11.012Z",
-      "role": "MERCHANT",
-      "details": "Updated merchant fitri kue fields: name, phone, ownerName, bankName, bankAccount, bankHolder, description, image, bannerImage, openTime, closeTime, category, preOrderOnly, preOrderMinAmount, preOrderLeadDays",
-      "id": "log_94fdt1i9b",
-      "userId": "m_eeoltwv06",
-      "action": "Updated"
-    },
-    {
-      "action": "Database",
-      "details": "Database initialized and seeded.",
-      "role": "SYSTEM",
-      "id": "log_9b0mpzh61",
-      "userId": "SYSTEM",
-      "createdAt": "2026-07-21T10:59:14.932Z"
-    },
-    {
-      "userId": "SYSTEM",
-      "details": "Database initialized and seeded.",
-      "createdAt": "2026-07-22T06:31:19.836Z",
-      "action": "Database",
-      "id": "log_9vieca0aw",
-      "role": "SYSTEM"
-    },
-    {
-      "action": "Submitted",
-      "id": "log_a79qu1ac8",
-      "createdAt": "2026-07-01T08:33:08.482Z",
-      "role": "CUSTOMER",
-      "userId": "CUSTOMER",
-      "details": "Submitted partner registration for wahyu eka (MERCHANT)"
-    },
-    {
-      "role": "SYSTEM",
-      "action": "Database",
-      "id": "log_abnmr9ccv",
-      "userId": "SYSTEM",
-      "details": "Database initialized and seeded.",
-      "createdAt": "2026-07-02T15:01:47.739Z"
-    },
-    {
-      "details": "Updated merchant trydrg fields: active",
-      "createdAt": "2026-07-01T11:43:32.862Z",
-      "action": "Updated",
-      "userId": "m_z04mvmaio",
-      "id": "log_axund0o19",
-      "role": "MERCHANT"
-    },
-    {
-      "action": "Approved",
-      "userId": "admin",
-      "role": "ADMIN",
-      "details": "Approved partner registration reg_6kclbzer6 (wahyu eka)",
-      "id": "log_bxfgmtgyz",
-      "createdAt": "2026-07-01T11:05:30.085Z"
-    },
-    {
-      "userId": "admin",
-      "details": "Admin logged in successfully",
-      "action": "Admin",
-      "id": "log_byt0jh00s",
-      "createdAt": "2026-07-23T08:04:35.411Z",
-      "role": "ADMIN"
-    },
-    {
-      "userId": "SYSTEM",
-      "id": "log_cbt72q44x",
-      "createdAt": "2026-07-22T11:07:00.431Z",
-      "action": "Database",
-      "role": "SYSTEM",
-      "details": "Database initialized and seeded."
-    },
-    {
-      "userId": "m_z04mvmaio",
-      "createdAt": "2026-07-01T11:54:58.038Z",
-      "action": "Updated",
-      "id": "log_cdskg4r0g",
-      "details": "Updated merchant trydrg fields: active",
-      "role": "MERCHANT"
-    },
-    {
-      "createdAt": "2026-07-01T11:04:30.700Z",
-      "userId": "CUSTOMER",
-      "action": "Submitted",
-      "role": "CUSTOMER",
-      "details": "Submitted partner registration for wahyu eka (MERCHANT)",
-      "id": "log_cl7sambev"
-    },
-    {
-      "id": "log_cpd5yl91m",
-      "details": "Deleted menu item Nasi Goreng Spesial (Contoh)",
-      "userId": "m_eeoltwv06",
-      "createdAt": "2026-07-01T11:56:40.609Z",
-      "role": "MERCHANT",
-      "action": "Deleted"
-    },
-    {
-      "id": "log_d5s8c0udl",
-      "createdAt": "2026-07-01T11:18:49.306Z",
-      "userId": "CUSTOMER",
-      "role": "SYSTEM",
-      "action": "Created",
-      "details": "Created new order ord_8b1uy8mj2 with total Rp 22,058 (Unique Code: 58)"
-    },
-    {
-      "id": "log_en1x3uakn",
-      "details": "Database initialized and seeded.",
-      "role": "SYSTEM",
-      "action": "Database",
-      "createdAt": "2026-07-22T02:18:40.931Z",
-      "userId": "SYSTEM"
-    },
-    {
-      "details": "Updated merchant trydrg fields: active",
-      "role": "MERCHANT",
-      "id": "log_ewqwrjps3",
-      "userId": "m_z04mvmaio",
-      "action": "Updated",
-      "createdAt": "2026-07-01T11:54:59.571Z"
-    },
-    {
-      "role": "SYSTEM",
-      "createdAt": "2026-07-22T03:55:39.497Z",
-      "id": "log_fdww06a8m",
-      "action": "Database",
-      "details": "Database initialized and seeded.",
-      "userId": "SYSTEM"
-    },
-    {
-      "userId": "admin",
-      "details": "Created merchant ergerge",
-      "action": "Created",
-      "id": "log_frq43ova7",
-      "role": "ADMIN",
-      "createdAt": "2026-07-01T11:29:36.144Z"
-    },
-    {
-      "createdAt": "2026-07-05T15:51:14.038Z",
-      "id": "log_fzy9a5vfg",
-      "userId": "SYSTEM",
-      "role": "SYSTEM",
-      "action": "Database",
-      "details": "Database initialized and seeded."
-    },
-    {
-      "id": "log_gad8ngoiv",
-      "role": "MERCHANT",
-      "userId": "m_eeoltwv06",
-      "details": "Created category kue",
-      "createdAt": "2026-07-01T11:56:02.020Z",
-      "action": "Created"
-    },
-    {
-      "id": "log_gixqwm2wk",
-      "role": "MERCHANT",
-      "details": "Updated merchant trydrg fields: active",
-      "userId": "m_z04mvmaio",
-      "action": "Updated",
-      "createdAt": "2026-07-01T11:43:32.146Z"
-    },
-    {
-      "createdAt": "2026-07-01T11:54:04.453Z",
-      "action": "Submitted",
-      "details": "Submitted partner registration for wahyu eka (MERCHANT)",
-      "userId": "CUSTOMER",
-      "role": "CUSTOMER",
-      "id": "log_gr07myn93"
-    },
-    {
-      "createdAt": "2026-07-23T08:11:38.143Z",
-      "details": "Admin logged in successfully",
-      "action": "Admin",
-      "role": "ADMIN",
-      "id": "log_gwy89ihj3",
-      "userId": "admin"
-    },
-    {
-      "role": "CUSTOMER",
-      "id": "log_h13neesd1",
-      "createdAt": "2026-07-01T11:24:21.487Z",
-      "userId": "CUSTOMER",
-      "action": "Submitted",
-      "details": "Submitted partner registration for wahyu eka (MERCHANT)"
-    },
-    {
-      "id": "log_i1hxuestd",
-      "details": "Database initialized and seeded.",
-      "createdAt": "2026-07-16T13:05:38.644Z",
-      "userId": "SYSTEM",
-      "role": "SYSTEM",
-      "action": "Database"
-    },
-    {
-      "createdAt": "2026-07-01T11:05:30.079Z",
-      "details": "Created merchant trydrg",
-      "role": "ADMIN",
-      "userId": "admin",
-      "action": "Created",
-      "id": "log_i7fvp9r3x"
-    },
-    {
-      "role": "ADMIN",
-      "details": "Admin logged in successfully",
-      "id": "log_ih0gsosod",
-      "action": "Admin",
-      "userId": "admin",
-      "createdAt": "2026-07-23T08:02:24.875Z"
-    },
-    {
-      "role": "ADMIN",
-      "id": "log_j1lxge8at",
-      "userId": "admin",
-      "action": "Created",
-      "createdAt": "2026-07-01T08:35:44.824Z",
-      "details": "Created license key TUMPANG-PREM-ZTDYVGL9 for 30 days"
-    },
-    {
-      "details": "Database initialized and seeded.",
-      "role": "SYSTEM",
-      "createdAt": "2026-07-20T03:16:14.148Z",
-      "userId": "SYSTEM",
-      "action": "Database",
-      "id": "log_juoreu53d"
-    },
-    {
-      "details": "Database initialized and seeded.",
-      "createdAt": "2026-07-22T08:59:05.088Z",
-      "action": "Database",
-      "userId": "SYSTEM",
-      "id": "log_knyrdnw6z",
-      "role": "SYSTEM"
-    },
-    {
-      "id": "log_lg1v2qfh4",
-      "details": "Admin logged in successfully",
-      "userId": "admin",
-      "role": "ADMIN",
-      "action": "Admin",
-      "createdAt": "2026-07-23T08:17:27.869Z"
-    },
-    {
-      "role": "SYSTEM",
-      "action": "Database",
-      "createdAt": "2026-07-22T04:03:50.077Z",
-      "id": "log_mk7yyotha",
-      "details": "Database initialized and seeded.",
-      "userId": "SYSTEM"
-    },
-    {
-      "details": "Database initialized and seeded.",
-      "action": "Database",
-      "role": "SYSTEM",
-      "userId": "SYSTEM",
-      "id": "log_ncqxy3mwt",
-      "createdAt": "2026-07-22T03:56:02.339Z"
-    },
-    {
-      "role": "ADMIN",
-      "createdAt": "2026-07-01T11:54:24.855Z",
-      "action": "Created",
-      "details": "Created merchant fitri kue",
-      "id": "log_nsd0hh2ma",
-      "userId": "admin"
-    },
-    {
-      "userId": "SYSTEM",
-      "action": "Database",
-      "createdAt": "2026-07-22T03:53:39.623Z",
-      "id": "log_ocw556y05",
-      "role": "SYSTEM",
-      "details": "Database initialized and seeded."
-    },
-    {
-      "createdAt": "2026-07-22T03:17:32.718Z",
-      "action": "Database",
-      "userId": "SYSTEM",
-      "details": "Database initialized and seeded.",
-      "role": "SYSTEM",
-      "id": "log_oudw3gv3q"
-    },
-    {
-      "role": "SYSTEM",
-      "details": "Database initialized and seeded.",
-      "createdAt": "2026-07-23T03:46:09.155Z",
-      "id": "log_pe9csjx05",
-      "action": "Database",
-      "userId": "SYSTEM"
-    },
-    {
-      "createdAt": "2026-07-23T08:03:30.158Z",
-      "role": "ADMIN",
-      "action": "Admin",
-      "details": "Admin logged in successfully",
-      "id": "log_piex1fvq6",
-      "userId": "admin"
-    },
-    {
-      "id": "log_qlki5evbs",
-      "createdAt": "2026-07-21T06:40:01.711Z",
-      "userId": "SYSTEM",
-      "role": "SYSTEM",
-      "details": "Database initialized and seeded.",
-      "action": "Database"
-    },
-    {
-      "role": "SYSTEM",
-      "details": "Database initialized and seeded.",
-      "id": "log_qqvaft0c7",
-      "action": "Database",
-      "createdAt": "2026-07-22T04:04:27.580Z",
-      "userId": "SYSTEM"
-    },
-    {
-      "userId": "m_eeoltwv06",
-      "details": "Redeemed license key TUMPANG-PREM-BAKERY. Store is now PREMIUM until 7/1/2027",
-      "action": "Redeemed",
-      "createdAt": "2026-07-01T11:57:35.056Z",
-      "role": "MERCHANT",
-      "id": "log_r1h81l2vb"
-    },
-    {
-      "details": "Database initialized and seeded.",
-      "createdAt": "2026-07-18T14:50:18.075Z",
-      "id": "log_r700eei66",
-      "action": "Database",
-      "role": "SYSTEM",
-      "userId": "SYSTEM"
-    },
-    {
-      "role": "SYSTEM",
-      "createdAt": "2026-07-21T06:39:49.263Z",
-      "userId": "SYSTEM",
-      "details": "Database initialized and seeded.",
-      "action": "Database",
-      "id": "log_rypq0ivh3"
-    },
-    {
-      "userId": "CUSTOMER",
-      "role": "CUSTOMER",
-      "action": "Submitted",
-      "createdAt": "2026-07-01T11:29:13.360Z",
-      "id": "log_tatj3kp27",
-      "details": "Submitted partner registration for wahyu eka (MERCHANT)"
-    },
-    {
-      "role": "MERCHANT",
-      "details": "Updated merchant fitri kue fields: name, phone, ownerName, bankName, bankAccount, bankHolder, description, image, bannerImage, openTime, closeTime, category, preOrderOnly, preOrderMinAmount, preOrderLeadDays",
-      "id": "log_tb8awpbsa",
-      "userId": "m_eeoltwv06",
-      "createdAt": "2026-07-01T12:05:17.481Z",
-      "action": "Updated"
-    },
-    {
-      "createdAt": "2026-07-23T03:10:51.266Z",
-      "details": "Database initialized and seeded.",
-      "role": "SYSTEM",
-      "id": "log_thtihe8ss",
-      "userId": "SYSTEM",
-      "action": "Database"
-    },
-    {
-      "role": "SYSTEM",
-      "userId": "SYSTEM",
-      "id": "log_uvu7w9f95",
-      "createdAt": "2026-07-23T05:31:23.108Z",
-      "action": "Database",
-      "details": "Database initialized and seeded."
-    },
-    {
-      "id": "log_uz9hg4309",
-      "role": "ADMIN",
-      "details": "Approved partner registration reg_7k4e418nx (wahyu eka)",
-      "createdAt": "2026-07-01T11:54:24.872Z",
-      "userId": "admin",
-      "action": "Approved"
-    },
-    {
-      "userId": "SYSTEM",
-      "id": "log_vhrndbp1b",
-      "action": "Database",
-      "role": "SYSTEM",
-      "details": "Database initialized and seeded.",
-      "createdAt": "2026-07-22T14:23:22.655Z"
-    },
-    {
-      "createdAt": "2026-07-01T11:29:36.158Z",
-      "action": "Approved",
-      "details": "Approved partner registration reg_b4t2l7qu2 (wahyu eka)",
-      "id": "log_vsdk84ok5",
-      "userId": "admin",
-      "role": "ADMIN"
-    },
-    {
-      "details": "Created menu item brownies",
-      "createdAt": "2026-07-01T11:56:36.081Z",
-      "role": "MERCHANT",
-      "action": "Created",
-      "id": "log_vuj2k9sy2",
-      "userId": "m_eeoltwv06"
-    },
-    {
-      "details": "Database initialized and seeded.",
-      "action": "Database",
-      "userId": "SYSTEM",
-      "id": "log_wnbw7su9f",
-      "createdAt": "2026-07-24T03:06:26.508Z",
-      "role": "SYSTEM"
-    },
-    {
-      "action": "Database",
-      "details": "Database initialized and seeded.",
-      "role": "SYSTEM",
-      "createdAt": "2026-07-22T06:04:58.763Z",
-      "userId": "SYSTEM",
-      "id": "log_wpxzo7m0p"
-    },
-    {
-      "createdAt": "2026-07-20T04:40:57.742Z",
-      "id": "log_x42sfpjii",
-      "role": "DRIVER",
-      "action": "Updated",
-      "userId": "d1",
-      "details": "Updated driver Driver Budi Santoso online status to false"
-    },
-    {
-      "userId": "admin",
-      "createdAt": "2026-07-01T08:33:44.712Z",
-      "action": "Approved",
-      "role": "ADMIN",
-      "id": "log_x707vzz1g",
-      "details": "Approved partner registration reg_9bpktlkxw (wahyu eka)"
-    },
-    {
-      "action": "Admin",
-      "details": "Admin logged in successfully",
-      "userId": "admin",
-      "role": "ADMIN",
-      "createdAt": "2026-07-23T08:09:13.932Z",
-      "id": "log_z7m33jgd6"
     }
   ],
   "systemConfig": {
@@ -2967,10 +4014,40 @@
   ],
   "licenses": [
     {
+      "key": "TUMPANG-PREM-U1GO2S",
+      "durationDays": 30,
+      "status": "USED",
+      "createdAt": "2026-10-11T06:36:45.614Z",
+      "usedByMerchantId": "m1",
+      "usedByMerchantName": "Bakso Solo Pak Kumis Tumpang",
+      "usedAt": "2026-10-11T06:36:45.634Z"
+    },
+    {
+      "key": "TUMPANG-PREM-X6ERIH",
+      "durationDays": 30,
+      "status": "USED",
+      "createdAt": "2026-10-11T06:25:27.067Z",
+      "usedByMerchantId": "m1",
+      "usedByMerchantName": "Bakso Solo Pak Kumis Tumpang",
+      "usedAt": "2026-10-11T06:25:27.090Z"
+    },
+    {
+      "key": "TEST-LIC-1791696676574",
+      "durationDays": 30,
+      "status": "USED",
+      "createdAt": "2026-10-11T05:31:16.574Z",
+      "usedByMerchantId": "m1",
+      "usedByMerchantName": "Bakso Solo Pak Kumis Tumpang",
+      "usedAt": "2026-10-11T05:31:16.591Z"
+    },
+    {
       "key": "TUMPANG-KEY-1791696626005",
       "durationDays": 45,
-      "status": "UNUSED",
-      "createdAt": "2026-10-11T05:30:26.006Z"
+      "status": "USED",
+      "createdAt": "2026-10-11T05:30:26.006Z",
+      "usedByMerchantId": "m1",
+      "usedByMerchantName": "Bakso Solo Pak Kumis Tumpang",
+      "usedAt": "2026-10-11T06:20:06.060Z"
     },
     {
       "createdAt": "2026-07-01T08:17:11.433Z",
@@ -2991,16 +4068,22 @@
       "usedAt": "2026-10-11T03:57:25.967Z"
     },
     {
-      "status": "UNUSED",
+      "status": "USED",
       "createdAt": "2026-07-01T08:17:11.433Z",
       "key": "TUMPANG-PREM-FITRI-KUE",
-      "durationDays": 30
+      "durationDays": 30,
+      "usedByMerchantId": "m1",
+      "usedByMerchantName": "Bakso Solo Pak Kumis Tumpang",
+      "usedAt": "2026-10-11T06:20:51.009Z"
     },
     {
       "key": "TUMPANG-PREM-ZTDYVGL9",
       "createdAt": "2026-07-01T08:35:44.823Z",
-      "status": "UNUSED",
-      "durationDays": 30
+      "status": "USED",
+      "durationDays": 30,
+      "usedByMerchantId": "m2",
+      "usedByMerchantName": "Sate Khas Malang Tumpang",
+      "usedAt": "2026-10-11T06:22:02.641Z"
     }
   ]
 }
