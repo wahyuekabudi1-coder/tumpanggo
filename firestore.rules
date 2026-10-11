@@ -78,5 +78,9 @@ service cloud.firestore {
     match /shop_audit_logs/{logId} {
       allow read, write: if false;
     }
+
+    match /shop_shipments/{shipmentId} {
+      allow read, write: if false;
+    }
   }
 }

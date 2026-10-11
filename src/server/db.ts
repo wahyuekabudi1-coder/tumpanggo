@@ -230,14 +230,19 @@ export class FoodDatabase {
   }
 
   private initPromise: Promise<void> | null = null;
+  private lastSyncTimestamp = 0;
+  private readonly CACHE_TTL_MS = 15000;
 
-  public async ensureInitialized(): Promise<void> {
-    if (this.isInitialized) return;
-    if (!this.initPromise) {
+  public async ensureInitialized(forceRefresh = false): Promise<void> {
+    if (this.isInitialized && !forceRefresh && (Date.now() - this.lastSyncTimestamp < this.CACHE_TTL_MS)) {
+      return;
+    }
+    if (!this.initPromise || forceRefresh) {
       this.initPromise = this.init();
     }
     try {
       await this.initPromise;
+      this.lastSyncTimestamp = Date.now();
     } catch (err) {
       this.initPromise = null;
       this.isInitialized = false;
@@ -284,11 +289,9 @@ export class FoodDatabase {
   }
 
   /**
-   * Synchronize state with Firebase Firestore using timestamp-based conflict resolution.
+   * Synchronize state with Firebase Firestore as Primary Storage.
    */
   public async init() {
-    if (this.isInitialized) return;
-
     if (!isFirestoreAdminConfigured()) {
       if (foodConfig.isProduction) {
         throw new Error('[Produksi] Firebase Admin SDK tidak terkonfigurasi. Operasi database ditolak demi integritas data.');
@@ -300,6 +303,10 @@ export class FoodDatabase {
 
     const probe = await testFirestoreConnection();
     if (!probe.connected) {
+      if (foodConfig.isProduction) {
+        this.isInitialized = false;
+        throw new Error(`[Produksi] Firestore Cloud tidak terhubung (${probe.diagnosticReason}: ${probe.error || probe.diagnosticDetail}). Mode produksi menolak fallback ke data JSON lokal demi menjaga integritas data.`);
+      }
       console.warn(`[TumpangFood DB] Firestore Cloud belum terhubung (${probe.diagnosticReason}: ${probe.error || probe.diagnosticDetail}). Melewati sinkronisasi remote koleksi.`);
       this.isInitialized = true;
       return;
@@ -322,24 +329,11 @@ export class FoodDatabase {
         console.warn('[TumpangFood DB] Failed to sync systemConfig with Firestore:', e.message);
       }
 
-      // Merchants
+      // Merchants (Firestore as Primary Store)
       try {
         const remoteMerchants = await safeAdminGetDocs('merchants');
         if (remoteMerchants.length > 0) {
-          for (const rm of remoteMerchants as Merchant[]) {
-            const idx = this.data.merchants.findIndex(m => m.id === rm.id);
-            if (idx >= 0) {
-              const localTime = new Date(this.data.merchants[idx].updatedAt || 0).getTime();
-              const remoteTime = new Date(rm.updatedAt || 0).getTime();
-              if (remoteTime >= localTime) {
-                this.data.merchants[idx] = { ...this.data.merchants[idx], ...rm };
-              } else {
-                await safeAdminSetDoc('merchants', this.data.merchants[idx].id, this.data.merchants[idx]);
-              }
-            } else {
-              this.data.merchants.push(rm);
-            }
-          }
+          this.data.merchants = remoteMerchants as Merchant[];
         } else if (this.data.merchants.length > 0) {
           for (const m of this.data.merchants) {
             await safeAdminSetDoc('merchants', m.id, m);
@@ -353,11 +347,7 @@ export class FoodDatabase {
       try {
         const remoteCats = await safeAdminGetDocs('categories');
         if (remoteCats.length > 0) {
-          for (const rc of remoteCats as Category[]) {
-            if (!this.data.categories.some(c => c.id === rc.id)) {
-              this.data.categories.push(rc);
-            }
-          }
+          this.data.categories = remoteCats as Category[];
         } else if (this.data.categories.length > 0) {
           for (const c of this.data.categories) {
             await safeAdminSetDoc('categories', c.id, c);
@@ -371,14 +361,7 @@ export class FoodDatabase {
       try {
         const remoteItems = await safeAdminGetDocs('menuItems');
         if (remoteItems.length > 0) {
-          for (const ri of remoteItems as MenuItem[]) {
-            const idx = this.data.menuItems.findIndex(i => i.id === ri.id);
-            if (idx >= 0) {
-              this.data.menuItems[idx] = { ...this.data.menuItems[idx], ...ri };
-            } else {
-              this.data.menuItems.push(ri);
-            }
-          }
+          this.data.menuItems = remoteItems as MenuItem[];
         } else if (this.data.menuItems.length > 0) {
           for (const i of this.data.menuItems) {
             await safeAdminSetDoc('menuItems', i.id, i);
@@ -392,14 +375,7 @@ export class FoodDatabase {
       try {
         const remoteDrivers = await safeAdminGetDocs('drivers');
         if (remoteDrivers.length > 0) {
-          for (const rd of remoteDrivers as Driver[]) {
-            const idx = this.data.drivers.findIndex(d => d.id === rd.id);
-            if (idx >= 0) {
-              this.data.drivers[idx] = { ...this.data.drivers[idx], ...rd };
-            } else {
-              this.data.drivers.push(rd);
-            }
-          }
+          this.data.drivers = remoteDrivers as Driver[];
         } else if (this.data.drivers.length > 0) {
           for (const d of this.data.drivers) {
             await safeAdminSetDoc('drivers', d.id, d);
@@ -409,24 +385,11 @@ export class FoodDatabase {
         console.warn('[TumpangFood DB] Failed to sync drivers with Firestore:', e.message);
       }
 
-      // Orders - Timestamp-aware synchronization
+      // Orders
       try {
         const remoteOrders = await safeAdminGetDocs('orders');
         if (remoteOrders.length > 0) {
-          for (const ro of remoteOrders as Order[]) {
-            const idx = this.data.orders.findIndex(o => o.id === ro.id);
-            if (idx >= 0) {
-              const localTime = new Date((this.data.orders[idx] as any).updatedAt || this.data.orders[idx].createdAt || 0).getTime();
-              const remoteTime = new Date((ro as any).updatedAt || ro.createdAt || 0).getTime();
-              if (remoteTime >= localTime) {
-                this.data.orders[idx] = { ...this.data.orders[idx], ...ro };
-              } else {
-                await safeAdminSetDoc('orders', this.data.orders[idx].id, this.data.orders[idx]);
-              }
-            } else {
-              this.data.orders.push(ro);
-            }
-          }
+          this.data.orders = (remoteOrders as Order[]).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         } else if (this.data.orders.length > 0) {
           for (const o of this.data.orders) {
             await safeAdminSetDoc('orders', o.id, o);
@@ -440,14 +403,7 @@ export class FoodDatabase {
       try {
         const remoteSets = await safeAdminGetDocs('settlements');
         if (remoteSets.length > 0) {
-          for (const rs of remoteSets as Settlement[]) {
-            const idx = this.data.settlements.findIndex(s => s.id === rs.id);
-            if (idx >= 0) {
-              this.data.settlements[idx] = { ...this.data.settlements[idx], ...rs };
-            } else {
-              this.data.settlements.push(rs);
-            }
-          }
+          this.data.settlements = remoteSets as Settlement[];
         } else if (this.data.settlements.length > 0) {
           for (const s of this.data.settlements) {
             await safeAdminSetDoc('settlements', s.id, s);
@@ -461,14 +417,7 @@ export class FoodDatabase {
       try {
         const remoteRegs = await safeAdminGetDocs('partnerRegistrations');
         if (remoteRegs.length > 0) {
-          for (const rr of remoteRegs as PartnerRegistration[]) {
-            const idx = this.data.partnerRegistrations.findIndex(r => r.id === rr.id);
-            if (idx >= 0) {
-              this.data.partnerRegistrations[idx] = { ...this.data.partnerRegistrations[idx], ...rr };
-            } else {
-              this.data.partnerRegistrations.push(rr);
-            }
-          }
+          this.data.partnerRegistrations = remoteRegs as PartnerRegistration[];
         } else if (this.data.partnerRegistrations.length > 0) {
           for (const r of this.data.partnerRegistrations) {
             await safeAdminSetDoc('partnerRegistrations', r.id, r);
@@ -482,14 +431,7 @@ export class FoodDatabase {
       try {
         const remoteLics = await safeAdminGetDocs('licenses');
         if (remoteLics.length > 0) {
-          for (const rl of remoteLics as LicenseKey[]) {
-            const idx = this.data.licenses.findIndex(l => l.key === rl.key);
-            if (idx >= 0) {
-              this.data.licenses[idx] = { ...this.data.licenses[idx], ...rl };
-            } else {
-              this.data.licenses.push(rl);
-            }
-          }
+          this.data.licenses = remoteLics as LicenseKey[];
         } else if (this.data.licenses.length > 0) {
           for (const l of this.data.licenses) {
             await safeAdminSetDoc('licenses', l.key, l);
@@ -499,10 +441,26 @@ export class FoodDatabase {
         console.warn('[TumpangFood DB] Failed to sync licenses with Firestore:', e.message);
       }
 
+      // Audit Logs
+      try {
+        const remoteLogs = await safeAdminGetDocs('auditLogs');
+        if (remoteLogs.length > 0) {
+          this.data.auditLogs = (remoteLogs as AuditLog[])
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+            .slice(0, 500);
+        }
+      } catch (e: any) {
+        console.warn('[TumpangFood DB] Failed to sync auditLogs with Firestore:', e.message);
+      }
+
       this.save();
       this.createBackup();
-      console.log('[TumpangFood DB] Firestore Admin synchronization successful.');
+      console.log('[TumpangFood DB] Firestore Admin synchronization successful (Primary Store Active).');
     } catch (err: any) {
+      if (foodConfig.isProduction) {
+        this.isInitialized = false;
+        throw new Error(`[Produksi] Sinkronisasi data dengan Firestore Cloud gagal: ${err.message}. Operasi database ditolak demi integritas data.`);
+      }
       console.error('[TumpangFood DB] Firestore sync failed, continuing locally:', err.message);
     }
   }
@@ -966,11 +924,40 @@ export class FoodDatabase {
     return this.data.orders.filter(o => o.customerPhone === phone);
   }
 
+  public async findOrder(id: string): Promise<Order | undefined> {
+    if (!id) return undefined;
+    const cleanId = id.trim();
+    let order = this.data.orders.find(o => o.id === cleanId);
+    if (!order && isFirestoreAdminConfigured()) {
+      try {
+        const remote = await safeAdminGetDoc('orders', cleanId);
+        if (remote) {
+          order = remote as Order;
+          const idx = this.data.orders.findIndex(o => o.id === cleanId);
+          if (idx >= 0) this.data.orders[idx] = order;
+          else this.data.orders.unshift(order);
+        }
+      } catch (e: any) {
+        console.warn(`[TumpangFood DB] Query remote order ${cleanId} failed:`, e.message);
+      }
+    }
+    return order;
+  }
+
   public async createOrder(rawInput: any): Promise<Order> {
     const merchant = this.getMerchantById(rawInput.merchantId);
     if (!merchant) throw new Error('Toko / Merchant tidak ditemukan.');
 
-    // Prevent duplicate orders submitted within 10 seconds with identical details
+    // 1. Idempotency Check (clientRequestId)
+    if (rawInput.clientRequestId && String(rawInput.clientRequestId).trim().length > 0) {
+      const cleanReqId = String(rawInput.clientRequestId).trim();
+      const existingReq = this.data.orders.find(o => (o as any).clientRequestId === cleanReqId);
+      if (existingReq) {
+        return existingReq;
+      }
+    }
+
+    // 2. Prevent duplicate orders submitted within 10 seconds with identical details
     const recentDuplicate = this.data.orders.find(o => 
       o.merchantId === rawInput.merchantId &&
       o.customerPhone === rawInput.customerPhone &&
@@ -996,6 +983,7 @@ export class FoodDatabase {
     const newOrder: Order = {
       ...validatedOrderData,
       id: 'ord_' + Math.random().toString(36).substring(2, 9),
+      clientRequestId: rawInput.clientRequestId ? String(rawInput.clientRequestId).trim() : undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -1004,12 +992,13 @@ export class FoodDatabase {
     this.save();
     this.log('CUSTOMER', `Created order ${newOrder.id} Total: Rp ${newOrder.total.toLocaleString()} (UniqueCode: ${newOrder.uniqueCode})`, 'CUSTOMER');
 
-    if (foodConfig.isProduction) {
+    const probe = await testFirestoreConnection();
+    if (foodConfig.isProduction || probe.connected) {
       const persisted = await safeFirestoreSetDoc('orders', newOrder.id, newOrder);
       if (!persisted) {
         this.data.orders.shift();
         this.save();
-        throw new Error('[Produksi] Gagal menyimpan pesanan ke cloud Firestore. Transaksi dibatalkan secara aman demi mencegah kehilangan data.');
+        throw new Error('Gagal menyimpan pesanan ke cloud Firestore. Transaksi dibatalkan secara aman demi mencegah kehilangan data atau transaksi ganda.');
       }
     } else {
       safeFirestoreSetDoc('orders', newOrder.id, newOrder);
@@ -1067,12 +1056,13 @@ export class FoodDatabase {
       this.log(userId, `Updated order ${id} details`, role);
     }
 
-    if (foodConfig.isProduction) {
+    const probe = await testFirestoreConnection();
+    if (foodConfig.isProduction || probe.connected) {
       const persisted = await safeFirestoreSetDoc('orders', id, this.data.orders[index]);
       if (!persisted) {
         this.data.orders[index] = currentOrder;
         this.save();
-        throw new Error('[Produksi] Gagal memperbarui status pesanan pada cloud Firestore. Perubahan status dibatalkan.');
+        throw new Error('Gagal memperbarui status pesanan pada cloud Firestore. Perubahan status dibatalkan demi integritas data.');
       }
     } else {
       safeFirestoreSetDoc('orders', id, this.data.orders[index]);

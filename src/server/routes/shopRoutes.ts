@@ -10,7 +10,7 @@ import { Router, Request, Response } from 'express';
 import { shopDb } from '../shopDb';
 import { shopConfig } from '../config';
 import { createShopAuthToken, requireShopAdmin } from '../auth';
-import { ShopOrderStatus } from '../../types/shop';
+import { ShopOrderStatus, ShopShipmentStatus } from '../../types/shop';
 
 export const shopRouter = Router();
 
@@ -87,6 +87,23 @@ shopRouter.get('/config', (req: Request, res: Response) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+/**
+ * PUT /api/shop/config & PUT /api/shop/admin/config
+ * Updates store settings, operational hours, fees, and QRIS (Admin only)
+ */
+const handleUpdateConfig = async (req: Request, res: Response) => {
+  try {
+    const actor = req.user?.userId || 'shop_admin';
+    const updated = await shopDb.updateConfig(actor, req.body);
+    res.json(updated);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+shopRouter.put('/config', requireShopAdmin, handleUpdateConfig);
+shopRouter.put('/admin/config', requireShopAdmin, handleUpdateConfig);
 
 /**
  * GET /api/shop/categories
@@ -168,7 +185,7 @@ shopRouter.post('/orders', async (req: Request, res: Response) => {
  * Tracks an order status and payment verification.
  * PRIVACY GUARD: Requires phone query parameter (?phone=...) matching the order to prevent data leak.
  */
-shopRouter.get('/orders/track/:id', (req: Request, res: Response) => {
+shopRouter.get('/orders/track/:id', async (req: Request, res: Response) => {
   try {
     const phone = req.query.phone as string | undefined;
     if (!phone || phone.trim().length === 0) {
@@ -177,7 +194,7 @@ shopRouter.get('/orders/track/:id', (req: Request, res: Response) => {
       });
     }
 
-    const order = shopDb.getOrderByNumberAndPhone(req.params.id, phone.trim());
+    const order = await shopDb.findOrderByNumberAndPhone(req.params.id, phone.trim());
     if (!order) {
       return res.status(404).json({ 
         error: 'Pesanan tidak ditemukan atau nomor WhatsApp tidak sesuai dengan data pemesan.' 
@@ -194,7 +211,7 @@ shopRouter.get('/orders/track/:id', (req: Request, res: Response) => {
  * POST /api/shop/orders/lookup
  * Form-friendly lookup endpoint using both orderNumber and customerPhone.
  */
-shopRouter.post('/orders/lookup', (req: Request, res: Response) => {
+shopRouter.post('/orders/lookup', async (req: Request, res: Response) => {
   try {
     const { orderNumber, customerPhone } = req.body;
     if (!orderNumber || !customerPhone) {
@@ -203,7 +220,7 @@ shopRouter.post('/orders/lookup', (req: Request, res: Response) => {
       });
     }
 
-    const order = shopDb.getOrderByNumberAndPhone(String(orderNumber).trim(), String(customerPhone).trim());
+    const order = await shopDb.findOrderByNumberAndPhone(String(orderNumber).trim(), String(customerPhone).trim());
     if (!order) {
       return res.status(404).json({ 
         error: 'Pesanan tidak ditemukan atau nomor WhatsApp tidak cocok dengan nomor pesanan.' 
@@ -246,7 +263,7 @@ shopRouter.post('/orders/:id/payment-proof', async (req: Request, res: Response)
   try {
     // If customerPhone is supplied, verify ownership
     if (customerPhone) {
-      const existing = shopDb.getOrderByNumberAndPhone(req.params.id, customerPhone);
+      const existing = await shopDb.findOrderByNumberAndPhone(req.params.id, customerPhone);
       if (!existing) {
         return res.status(403).json({ error: 'Verifikasi nomor WhatsApp gagal untuk pesanan ini.' });
       }
@@ -290,10 +307,10 @@ shopRouter.get('/admin/categories', requireShopAdmin, (req: Request, res: Respon
 });
 
 /**
- * POST /api/shop/categories
+ * POST /api/shop/categories & /api/shop/admin/categories
  * Creates new category
  */
-shopRouter.post('/categories', requireShopAdmin, async (req: Request, res: Response) => {
+const handleCreateCategory = async (req: Request, res: Response) => {
   try {
     const actor = req.user?.userId || 'shop_admin';
     const created = await shopDb.createCategory(actor, req.body);
@@ -301,13 +318,15 @@ shopRouter.post('/categories', requireShopAdmin, async (req: Request, res: Respo
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
-});
+};
+shopRouter.post('/categories', requireShopAdmin, handleCreateCategory);
+shopRouter.post('/admin/categories', requireShopAdmin, handleCreateCategory);
 
 /**
- * PUT /api/shop/categories/:id
+ * PUT /api/shop/categories/:id & /api/shop/admin/categories/:id
  * Updates existing category
  */
-shopRouter.put('/categories/:id', requireShopAdmin, async (req: Request, res: Response) => {
+const handleUpdateCategory = async (req: Request, res: Response) => {
   try {
     const actor = req.user?.userId || 'shop_admin';
     const updated = await shopDb.updateCategory(actor, req.params.id, req.body);
@@ -315,13 +334,15 @@ shopRouter.put('/categories/:id', requireShopAdmin, async (req: Request, res: Re
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
-});
+};
+shopRouter.put('/categories/:id', requireShopAdmin, handleUpdateCategory);
+shopRouter.put('/admin/categories/:id', requireShopAdmin, handleUpdateCategory);
 
 /**
- * DELETE /api/shop/categories/:id
+ * DELETE /api/shop/categories/:id & /api/shop/admin/categories/:id
  * Deletes category
  */
-shopRouter.delete('/categories/:id', requireShopAdmin, async (req: Request, res: Response) => {
+const handleDeleteCategory = async (req: Request, res: Response) => {
   try {
     const actor = req.user?.userId || 'shop_admin';
     const success = await shopDb.deleteCategory(actor, req.params.id);
@@ -332,7 +353,9 @@ shopRouter.delete('/categories/:id', requireShopAdmin, async (req: Request, res:
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
-});
+};
+shopRouter.delete('/categories/:id', requireShopAdmin, handleDeleteCategory);
+shopRouter.delete('/admin/categories/:id', requireShopAdmin, handleDeleteCategory);
 
 /**
  * GET /api/shop/admin/products
@@ -354,10 +377,10 @@ shopRouter.get('/admin/products', requireShopAdmin, (req: Request, res: Response
 });
 
 /**
- * POST /api/shop/products
+ * POST /api/shop/products & /api/shop/admin/products
  * Creates new product
  */
-shopRouter.post('/products', requireShopAdmin, async (req: Request, res: Response) => {
+const handleCreateProduct = async (req: Request, res: Response) => {
   try {
     const actor = req.user?.userId || 'shop_admin';
     const created = await shopDb.createProduct(actor, req.body);
@@ -365,13 +388,15 @@ shopRouter.post('/products', requireShopAdmin, async (req: Request, res: Respons
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
-});
+};
+shopRouter.post('/products', requireShopAdmin, handleCreateProduct);
+shopRouter.post('/admin/products', requireShopAdmin, handleCreateProduct);
 
 /**
- * PUT /api/shop/products/:id
+ * PUT /api/shop/products/:id & /api/shop/admin/products/:id
  * Updates product
  */
-shopRouter.put('/products/:id', requireShopAdmin, async (req: Request, res: Response) => {
+const handleUpdateProduct = async (req: Request, res: Response) => {
   try {
     const actor = req.user?.userId || 'shop_admin';
     const updated = await shopDb.updateProduct(actor, req.params.id, req.body);
@@ -379,13 +404,15 @@ shopRouter.put('/products/:id', requireShopAdmin, async (req: Request, res: Resp
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
-});
+};
+shopRouter.put('/products/:id', requireShopAdmin, handleUpdateProduct);
+shopRouter.put('/admin/products/:id', requireShopAdmin, handleUpdateProduct);
 
 /**
- * DELETE /api/shop/products/:id
+ * DELETE /api/shop/products/:id & /api/shop/admin/products/:id
  * Deletes product
  */
-shopRouter.delete('/products/:id', requireShopAdmin, async (req: Request, res: Response) => {
+const handleDeleteProduct = async (req: Request, res: Response) => {
   try {
     const actor = req.user?.userId || 'shop_admin';
     const success = await shopDb.deleteProduct(actor, req.params.id);
@@ -396,7 +423,9 @@ shopRouter.delete('/products/:id', requireShopAdmin, async (req: Request, res: R
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
-});
+};
+shopRouter.delete('/products/:id', requireShopAdmin, handleDeleteProduct);
+shopRouter.delete('/admin/products/:id', requireShopAdmin, handleDeleteProduct);
 
 /**
  * GET /api/shop/orders
@@ -464,3 +493,174 @@ shopRouter.get('/reports/summary', requireShopAdmin, (req: Request, res: Respons
     res.status(500).json({ error: err.message });
   }
 });
+
+/**
+ * GET /api/shop/reports/transactions
+ * Returns filtered transaction report by date range
+ */
+shopRouter.get('/reports/transactions', requireShopAdmin, (req: Request, res: Response) => {
+  try {
+    const startDate = req.query.startDate as string | undefined;
+    const endDate = req.query.endDate as string | undefined;
+    const report = shopDb.getTransactionReport(startDate, endDate);
+    res.json(report);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// 5. SHIPMENT & TRACKING MODULE (PART 5)
+// ==========================================
+
+/**
+ * GET /api/shop/shipping/options
+ * Returns available local and international (China -> Indonesia) shipping services.
+ */
+shopRouter.get('/shipping/options', (req: Request, res: Response) => {
+  try {
+    const options = shopDb.getShippingOptions();
+    res.json(options);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /api/shop/shipping/track/:trackingNumber
+ * Customer & public tracking by tracking number.
+ * PRIVACY GUARD: Requires phone query (?phone=...) unless authenticated as SHOP_ADMIN.
+ */
+shopRouter.get('/shipping/track/:trackingNumber', async (req: Request, res: Response) => {
+  try {
+    const trackingNumber = req.params.trackingNumber.trim();
+    const shipment = shopDb.getShipmentByTrackingNumber(trackingNumber);
+    if (!shipment) {
+      return res.status(404).json({ error: 'Nomor resi pengiriman tidak ditemukan.' });
+    }
+
+    // Check if requester is shop admin
+    const isShopAdmin = req.user?.role === 'SHOP_ADMIN' && req.user?.scope === 'shop';
+    if (!isShopAdmin) {
+      const phone = req.query.phone as string | undefined;
+      if (!phone || phone.trim().length === 0) {
+        return res.status(403).json({ 
+          error: 'Untuk perlindungan privasi data pelanggan, nomor WhatsApp penerima wajib disertakan (?phone=...).' 
+        });
+      }
+
+      // Verify phone against associated order
+      const associatedOrder = await shopDb.findOrderById(shipment.orderId);
+      if (!associatedOrder) {
+        return res.status(404).json({ error: 'Pesanan terkait tidak ditemukan.' });
+      }
+
+      const cleanPhone = phone.replace(/[^0-9]/g, '');
+      const normUserPhone = cleanPhone.startsWith('62') ? '0' + cleanPhone.slice(2) : cleanPhone;
+      const orderClean = associatedOrder.customerPhone.replace(/[^0-9]/g, '');
+      const normOrderPhone = orderClean.startsWith('62') ? '0' + orderClean.slice(2) : orderClean;
+
+      const isMatch = normUserPhone === normOrderPhone || 
+                      normUserPhone.endsWith(normOrderPhone.slice(-8)) || 
+                      normOrderPhone.endsWith(normUserPhone.slice(-8));
+
+      if (!isMatch) {
+        return res.status(403).json({ 
+          error: 'Nomor WhatsApp tidak cocok dengan data penerima paket ini.' 
+        });
+      }
+    }
+
+    res.json(shipment);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /api/shop/admin/shipments
+ * Lists all shipments for shop admin
+ */
+shopRouter.get('/admin/shipments', requireShopAdmin, (req: Request, res: Response) => {
+  try {
+    res.json(shopDb.getShipments());
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /api/shop/admin/shipments/:id
+ * Retrieves single shipment details
+ */
+shopRouter.get('/admin/shipments/:id', requireShopAdmin, (req: Request, res: Response) => {
+  try {
+    const shipment = shopDb.getShipmentById(req.params.id);
+    if (!shipment) {
+      return res.status(404).json({ error: 'Data pengiriman tidak ditemukan.' });
+    }
+    res.json(shipment);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /api/shop/admin/shipments/order/:orderId
+ * Retrieves shipment by order ID
+ */
+shopRouter.get('/admin/shipments/order/:orderId', requireShopAdmin, (req: Request, res: Response) => {
+  try {
+    const shipment = shopDb.getShipmentByOrderId(req.params.orderId);
+    if (!shipment) {
+      return res.status(404).json({ error: 'Pengiriman untuk pesanan ini belum dibuat.' });
+    }
+    res.json(shipment);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/shop/admin/shipments
+ * Creates or updates shipment profile for an order
+ */
+shopRouter.post('/admin/shipments', requireShopAdmin, async (req: Request, res: Response) => {
+  const { orderId } = req.body;
+  if (!orderId) {
+    return res.status(400).json({ error: 'orderId wajib diisi.' });
+  }
+
+  try {
+    const actor = req.user?.userId || 'shop_admin';
+    const created = await shopDb.createShipment(actor, req.body);
+    res.status(201).json(created);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+/**
+ * PATCH /api/shop/admin/shipments/:id/status
+ * Updates shipment status and appends tracking event
+ */
+shopRouter.patch('/admin/shipments/:id/status', requireShopAdmin, async (req: Request, res: Response) => {
+  const { status, location, description } = req.body;
+  if (!status || !Object.values(ShopShipmentStatus).includes(status)) {
+    return res.status(400).json({ 
+      error: `Status pengiriman tidak valid. Pilihan status: ${Object.values(ShopShipmentStatus).join(', ')}` 
+    });
+  }
+
+  try {
+    const actor = req.user?.userId || 'shop_admin';
+    const updated = await shopDb.updateShipmentStatus(actor, req.params.id, status as ShopShipmentStatus, {
+      location,
+      description
+    });
+    res.json(updated);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+

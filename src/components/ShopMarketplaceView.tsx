@@ -78,7 +78,7 @@ export default function ShopMarketplaceView({ onBackToMain }: ShopMarketplaceVie
   const [recipientAddress, setRecipientAddress] = useState<string>('');
   const [recipientDistrict, setRecipientDistrict] = useState<string>(DISTRICT_OPTIONS[0]);
   const [deliveryNotes, setDeliveryNotes] = useState<string>('');
-  const [shippingMethod, setShippingMethod] = useState<'INSTANT' | 'REGULAR' | 'PICKUP'>('INSTANT');
+  const [shippingMethod, setShippingMethod] = useState<'INSTANT' | 'REGULAR' | 'PICKUP' | 'CHINA_AIR_EXPRESS'>('INSTANT');
   const [clientRequestId, setClientRequestId] = useState<string>(() => `req_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState<boolean>(false);
   const [orderError, setOrderError] = useState<string | null>(null);
@@ -86,6 +86,7 @@ export default function ShopMarketplaceView({ onBackToMain }: ShopMarketplaceVie
   // Active / Submitted Order for Confirmation View
   const [activeOrder, setActiveOrder] = useState<ShopOrder | null>(null);
   const [copiedOrderNumber, setCopiedOrderNumber] = useState<boolean>(false);
+  const [copiedTrackingNumber, setCopiedTrackingNumber] = useState<boolean>(false);
 
   // Payment Proof Upload States
   const [proofImageBase64, setProofImageBase64] = useState<string>('');
@@ -286,9 +287,12 @@ export default function ShopMarketplaceView({ onBackToMain }: ShopMarketplaceVie
 
   // Shipping Fee calculation preview based on current shippingMethod
   const currentDeliveryFee = useMemo(() => {
-    if (!shopConfig) return 8000;
+    if (!shopConfig) return 4000;
     if (shippingMethod === 'PICKUP') return 0;
     if (shippingMethod === 'REGULAR') return Math.max(0, Math.round(shopConfig.defaultDeliveryFee * 0.7));
+    if (shippingMethod === 'EXPEDITION_REGULAR') return 12000;
+    if (shippingMethod === 'CHINA_AIR_EXPRESS') return 35000;
+    if (shippingMethod === 'CHINA_SEA_STANDARD') return 20000;
     return shopConfig.defaultDeliveryFee;
   }, [shopConfig, shippingMethod]);
 
@@ -625,7 +629,7 @@ export default function ShopMarketplaceView({ onBackToMain }: ShopMarketplaceVie
               <h3 className="font-extrabold text-sm text-slate-900">Pilihan Pengiriman</h3>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {/* INSTANT */}
               <label
                 className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between gap-2 ${
@@ -645,13 +649,13 @@ export default function ShopMarketplaceView({ onBackToMain }: ShopMarketplaceVie
                     />
                     <span className="text-xs font-black text-slate-900">Instan Go</span>
                   </div>
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-blue-100 text-blue-700">Cepat</span>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-blue-100 text-blue-700">Lokal</span>
                 </div>
                 <p className="text-[10px] text-slate-500 leading-tight">
-                  Langsung dikirim oleh kurir setelah dikemas.
+                  Langsung dikirim kurir toko ke alamat Anda.
                 </p>
                 <p className="text-xs font-black text-blue-700">
-                  Rp {(shopConfig?.defaultDeliveryFee || 8000).toLocaleString('id-ID')}
+                  Rp {(shopConfig?.defaultDeliveryFee || 4000).toLocaleString('id-ID')}
                 </p>
               </label>
 
@@ -680,7 +684,7 @@ export default function ShopMarketplaceView({ onBackToMain }: ShopMarketplaceVie
                   Jadwal pengiriman pagi berikutnya.
                 </p>
                 <p className="text-xs font-black text-blue-700">
-                  Rp {Math.max(0, Math.round((shopConfig?.defaultDeliveryFee || 8000) * 0.7)).toLocaleString('id-ID')}
+                  Rp {Math.max(0, Math.round((shopConfig?.defaultDeliveryFee || 4000) * 0.7)).toLocaleString('id-ID')}
                 </p>
               </label>
 
@@ -710,6 +714,93 @@ export default function ShopMarketplaceView({ onBackToMain }: ShopMarketplaceVie
                 </p>
                 <p className="text-xs font-black text-emerald-600">
                   Gratis (Rp 0)
+                </p>
+              </label>
+
+              {/* EKSPEDISI DOMESTIK REGULER */}
+              <label
+                className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between gap-2 ${
+                  shippingMethod === 'EXPEDITION_REGULAR' 
+                    ? 'border-blue-600 bg-blue-50/40 shadow-xs ring-1 ring-blue-500' 
+                    : 'border-slate-200 bg-white hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="shipping"
+                      checked={shippingMethod === 'EXPEDITION_REGULAR'}
+                      onChange={() => setShippingMethod('EXPEDITION_REGULAR')}
+                      className="text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                    <span className="text-xs font-black text-slate-900">Ekspedisi Domestik</span>
+                  </div>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-100 text-amber-700">J&T / JNE</span>
+                </div>
+                <p className="text-[10px] text-slate-500 leading-tight">
+                  Pengiriman reguler 2-3 hari kerja antar kota/luar Tumpang.
+                </p>
+                <p className="text-xs font-black text-amber-700">
+                  Rp 12.000
+                </p>
+              </label>
+
+              {/* CHINA -> INDONESIA CROSS-BORDER (AIR FREIGHT) */}
+              <label
+                className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between gap-2 ${
+                  shippingMethod === 'CHINA_AIR_EXPRESS' 
+                    ? 'border-blue-600 bg-blue-50/40 shadow-xs ring-1 ring-blue-500' 
+                    : 'border-slate-200 bg-white hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="shipping"
+                      checked={shippingMethod === 'CHINA_AIR_EXPRESS'}
+                      onChange={() => setShippingMethod('CHINA_AIR_EXPRESS')}
+                      className="text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                    <span className="text-xs font-black text-slate-900">Impor Udara CN ✈️</span>
+                  </div>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700">Air Express</span>
+                </div>
+                <p className="text-[10px] text-slate-500 leading-tight">
+                  Kargo udara internasional China → ID (7-12 hari kerja unverified).
+                </p>
+                <p className="text-xs font-black text-indigo-700">
+                  Rp 35.000
+                </p>
+              </label>
+
+              {/* CHINA -> INDONESIA CROSS-BORDER (SEA FREIGHT) */}
+              <label
+                className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between gap-2 ${
+                  shippingMethod === 'CHINA_SEA_STANDARD' 
+                    ? 'border-blue-600 bg-blue-50/40 shadow-xs ring-1 ring-blue-500' 
+                    : 'border-slate-200 bg-white hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="shipping"
+                      checked={shippingMethod === 'CHINA_SEA_STANDARD'}
+                      onChange={() => setShippingMethod('CHINA_SEA_STANDARD')}
+                      className="text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                    <span className="text-xs font-black text-slate-900">Impor Laut CN 🚢</span>
+                  </div>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-teal-100 text-teal-700">Sea Freight</span>
+                </div>
+                <p className="text-[10px] text-slate-500 leading-tight">
+                  Kargo laut kontainer China → ID hemat (20-30 hari kalender unverified).
+                </p>
+                <p className="text-xs font-black text-teal-700">
+                  Rp 20.000
                 </p>
               </label>
             </div>
@@ -853,6 +944,46 @@ export default function ShopMarketplaceView({ onBackToMain }: ShopMarketplaceVie
             </button>
           </div>
 
+          {/* Shipment Tracking Number Card if created */}
+          {activeOrder.shipment && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-blue-50/70 p-4 rounded-2xl border border-blue-200/80">
+              <div>
+                <div className="flex items-center gap-1.5 text-blue-700">
+                  <Truck className="w-3.5 h-3.5" />
+                  <p className="text-[10px] font-black uppercase tracking-wider">
+                    Resi Pengiriman ({activeOrder.shipment.courierName})
+                  </p>
+                </div>
+                <h4 className="font-mono font-black text-base text-slate-900 mt-0.5">
+                  {activeOrder.shipment.trackingNumber}
+                </h4>
+                <p className="text-[10px] text-blue-600 font-semibold mt-0.5">
+                  Status: {activeOrder.shipment.statusLabel} • {activeOrder.shipment.scope === 'INTERNATIONAL' ? 'Kargo Impor (China 🇨🇳 → ID 🇮🇩)' : 'Kurir Domestik/Lokal'}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(activeOrder.shipment!.trackingNumber);
+                  setCopiedTrackingNumber(true);
+                  setTimeout(() => setCopiedTrackingNumber(false), 2500);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-colors cursor-pointer self-start sm:self-auto"
+              >
+                {copiedTrackingNumber ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                    <span className="text-emerald-700">Resi Tersalin!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Salin Resi</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
           {/* Status Badges */}
           <div className="grid grid-cols-2 gap-3 pt-2">
             <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
@@ -873,6 +1004,90 @@ export default function ShopMarketplaceView({ onBackToMain }: ShopMarketplaceVie
                 {activeOrder.paymentStatus === 'UNPAID' ? 'Belum Dibayar (UNPAID)' : 
                  activeOrder.paymentStatus === 'WAITING_VERIFICATION' ? 'Menunggu Verifikasi Admin' :
                  activeOrder.paymentStatus === 'PAID' ? 'Lunas Terverifikasi' : activeOrder.paymentStatus}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Ringkasan Belanja & Detail Pengantaran */}
+        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs flex flex-col gap-4">
+          <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+            <ShoppingBag className="w-5 h-5 text-blue-600" />
+            <h3 className="font-extrabold text-sm text-slate-900">Ringkasan Belanja ({activeOrder.items.reduce((acc, it) => acc + it.quantity, 0)} Barang)</h3>
+          </div>
+
+          {/* Item List */}
+          <div className="flex flex-col gap-2.5 max-h-64 overflow-y-auto pr-1">
+            {activeOrder.items.map((item, idx) => (
+              <div key={idx} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-b-0 text-xs">
+                <div className="flex-1 min-w-0 pr-2">
+                  <h5 className="font-extrabold text-slate-800 truncate">{item.name}</h5>
+                  {item.selectedVariation && (
+                    <p className="text-[10px] text-blue-600 font-semibold truncate">
+                      Varian: {item.selectedVariation.optionName}
+                    </p>
+                  )}
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {item.quantity} {item.unit} x Rp {item.price.toLocaleString('id-ID')}
+                  </p>
+                </div>
+                <span className="font-black text-slate-900 flex-shrink-0">
+                  Rp {item.subtotal.toLocaleString('id-ID')}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Delivery & Recipient Info */}
+          <div className="bg-slate-50 p-4 rounded-2xl flex flex-col gap-2 text-xs border border-slate-100">
+            <div className="flex justify-between items-start">
+              <span className="text-slate-500 flex-shrink-0">Penerima:</span>
+              <span className="font-bold text-slate-900 text-right">{activeOrder.customerName} ({activeOrder.customerPhone})</span>
+            </div>
+            <div className="flex justify-between items-start">
+              <span className="text-slate-500 flex-shrink-0">Kecamatan:</span>
+              <span className="font-bold text-slate-900 text-right">{activeOrder.customerDistrict}</span>
+            </div>
+            <div className="flex justify-between items-start">
+              <span className="text-slate-500 flex-shrink-0">Alamat:</span>
+              <span className="font-bold text-slate-900 text-right max-w-[65%]">{activeOrder.deliveryAddress}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-500">Pengiriman:</span>
+              <span className="font-bold text-blue-700">{activeOrder.shippingMethodLabel || activeOrder.shippingMethod}</span>
+            </div>
+            {activeOrder.deliveryNotes && (
+              <div className="flex justify-between items-start pt-1 border-t border-slate-200/60">
+                <span className="text-slate-500 flex-shrink-0">Catatan:</span>
+                <span className="italic text-slate-600 text-right max-w-[65%]">"{activeOrder.deliveryNotes}"</span>
+              </div>
+            )}
+          </div>
+
+          {/* Rincian Biaya Transparan */}
+          <div className="bg-slate-50 p-4 rounded-2xl flex flex-col gap-2 text-xs border border-slate-100">
+            <div className="flex justify-between items-center text-slate-600">
+              <span>Subtotal Produk:</span>
+              <span className="font-bold text-slate-900">Rp {activeOrder.subtotal.toLocaleString('id-ID')}</span>
+            </div>
+            <div className="flex justify-between items-center text-slate-600">
+              <span>Ongkos Kirim:</span>
+              <span className="font-bold text-slate-900">
+                {activeOrder.deliveryFee === 0 ? 'Gratis (Rp 0)' : `Rp ${activeOrder.deliveryFee.toLocaleString('id-ID')}`}
+              </span>
+            </div>
+            <div className="flex justify-between items-center text-slate-600">
+              <span>Biaya Layanan & Penanganan:</span>
+              <span className="font-bold text-slate-900">Rp {activeOrder.serviceFee.toLocaleString('id-ID')}</span>
+            </div>
+            <div className="flex justify-between items-center text-slate-600">
+              <span>Kode Unik Verifikasi:</span>
+              <span className="font-bold text-blue-700">+{activeOrder.uniqueCode}</span>
+            </div>
+            <div className="border-t border-slate-200/80 pt-2.5 mt-1 flex justify-between items-center text-sm">
+              <span className="font-black text-slate-900">Total Tagihan:</span>
+              <span className="font-black text-base text-blue-700">
+                Rp {activeOrder.total.toLocaleString('id-ID')}
               </span>
             </div>
           </div>
@@ -1098,6 +1313,16 @@ export default function ShopMarketplaceView({ onBackToMain }: ShopMarketplaceVie
                 <h4 className="font-mono font-black text-lg text-slate-900">{trackedOrder.orderNumber}</h4>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleSearchTrackOrder}
+                  disabled={isSearchingTrack}
+                  className="px-2.5 py-1 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer active:scale-95"
+                  title="Segarkan status pesanan dan pengiriman"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isSearchingTrack ? 'animate-spin text-blue-600' : 'text-slate-500'}`} />
+                  <span>Segarkan</span>
+                </button>
                 <span className={`text-xs font-extrabold px-3 py-1 rounded-full ${
                   trackedOrder.paymentStatus === 'PAID' ? 'bg-emerald-100 text-emerald-800' :
                   trackedOrder.paymentStatus === 'WAITING_VERIFICATION' ? 'bg-amber-100 text-amber-800' :
@@ -1110,6 +1335,174 @@ export default function ShopMarketplaceView({ onBackToMain }: ShopMarketplaceVie
                 </span>
               </div>
             </div>
+
+            {/* Modul Pengiriman & Pelacakan Paket (Part 5) */}
+            {trackedOrder.shipment && (
+              <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200/80 flex flex-col gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Truck className="w-4 h-4 text-blue-600" />
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                        {trackedOrder.shipment.courierName}
+                      </span>
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
+                        trackedOrder.shipment.scope === 'INTERNATIONAL' 
+                          ? 'bg-indigo-100 text-indigo-700' 
+                          : 'bg-emerald-100 text-emerald-700'
+                      }`}>
+                        {trackedOrder.shipment.scope === 'INTERNATIONAL' ? 'Impor China 🇨🇳 → ID 🇮🇩' : 'Pengiriman Lokal'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs font-bold text-slate-500">No. Resi:</span>
+                      <span className="font-mono font-black text-sm text-slate-900">{trackedOrder.shipment.trackingNumber}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(trackedOrder.shipment!.trackingNumber);
+                          setCopiedTrackingNumber(true);
+                          setTimeout(() => setCopiedTrackingNumber(false), 2500);
+                        }}
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 bg-white border border-blue-200 px-2 py-0.5 rounded-lg transition-colors cursor-pointer"
+                        title="Salin Nomor Resi"
+                      >
+                        {copiedTrackingNumber ? (
+                          <>
+                            <Check className="w-3 h-3 text-emerald-600" />
+                            <span className="text-emerald-700">Tersalin</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3 text-slate-500" />
+                            <span>Salin</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="text-left sm:text-right">
+                    <span className="text-[10px] font-bold text-slate-400 block">Status Terkini Paket:</span>
+                    <span className="inline-block mt-0.5 px-3 py-1 rounded-full text-xs font-black bg-blue-600 text-white shadow-2xs">
+                      {trackedOrder.shipment.statusLabel}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Rute & Estimasi Tiba */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-white p-3.5 rounded-xl border border-slate-200/60">
+                  <div>
+                    <span className="text-slate-400 text-[10px] font-bold block">Rute Pengiriman:</span>
+                    <span className="font-bold text-slate-800 text-xs">
+                      {trackedOrder.shipment.originCity} ➔ {trackedOrder.shipment.destinationCity}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 text-[10px] font-bold block">Estimasi Waktu Tiba:</span>
+                    <span className="font-bold text-slate-800 text-xs">
+                      {trackedOrder.shipment.estimatedArrival}
+                    </span>
+                    {!trackedOrder.shipment.isEstimateVerified && (
+                      <span className="text-[9px] text-amber-600 font-medium block">
+                        *Estimasi manual belum terverifikasi API kurir live
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Catatan Transparansi Pembaruan Manual Admin (Requirement 7 & 8) */}
+                <div className="p-3 bg-amber-50/80 border border-amber-200/80 rounded-xl flex items-start gap-2.5 text-[11px] text-amber-900">
+                  <Info className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="leading-relaxed">
+                    <p className="font-bold">Pembaruan Manual oleh Admin Toko</p>
+                    <p className="text-amber-800 text-[10.5px] mt-0.5">{trackedOrder.shipment.courierAdapterNote}</p>
+                  </div>
+                </div>
+
+                {/* Visual Pipeline untuk Alur Internasional China -> Indonesia */}
+                {trackedOrder.shipment.scope === 'INTERNATIONAL' && (
+                  <div>
+                    <p className="text-xs font-black text-slate-800 mb-2.5">Tahapan Kargo Internasional (China → Indonesia):</p>
+                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 text-center">
+                      {[
+                        { step: 'WAITING_DISPATCH', label: 'Gudang China' },
+                        { step: 'IN_TRANSIT', label: 'Kargo Udara' },
+                        { step: 'ARRIVED_INDONESIA', label: 'Tiba di CGK' },
+                        { step: 'CUSTOMS_CLEARANCE', label: 'Bea Cukai' },
+                        { step: 'TRANSFERRED_LOCAL_COURIER', label: 'Kurir Lokal' },
+                        { step: 'DELIVERED', label: 'Diterima' }
+                      ].map((st, sIdx) => {
+                        const statusWeights: Record<string, number> = {
+                          WAITING_DISPATCH: 0,
+                          PROCESSING: 1,
+                          DISPATCHED: 1,
+                          IN_TRANSIT: 2,
+                          ARRIVED_INDONESIA: 3,
+                          CUSTOMS_CLEARANCE: 4,
+                          CUSTOMS_HOLD: 4,
+                          TRANSFERRED_LOCAL_COURIER: 5,
+                          OUT_FOR_DELIVERY: 5,
+                          DELIVERED: 6
+                        };
+                        const currentWeight = statusWeights[trackedOrder.shipment!.status] ?? 0;
+                        const isReached = currentWeight >= sIdx;
+                        const isCurrent = currentWeight === sIdx;
+
+                        return (
+                          <div key={st.step} className="flex flex-col items-center">
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                              isCurrent ? 'bg-indigo-600 text-white ring-2 ring-indigo-200' :
+                              isReached ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'
+                            }`}>
+                              {isReached ? <Check className="w-3 h-3" /> : sIdx + 1}
+                            </div>
+                            <span className={`text-[9.5px] mt-1 font-bold leading-tight ${
+                              isCurrent ? 'text-indigo-700' : isReached ? 'text-slate-800' : 'text-slate-400'
+                            }`}>
+                              {st.label}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Riwayat Pelacakan Paket / Tracking History Timeline */}
+                <div className="mt-1">
+                  <div className="flex items-center gap-1.5 mb-2.5">
+                    <Clock className="w-3.5 h-3.5 text-slate-500" />
+                    <p className="text-xs font-black text-slate-800">Riwayat Perjalanan Paket ({trackedOrder.shipment.trackingHistory.length} Pembaruan):</p>
+                  </div>
+
+                  <div className="flex flex-col gap-2 relative pl-3 border-l-2 border-slate-200 ml-2">
+                    {trackedOrder.shipment.trackingHistory.map((evt, eIdx) => (
+                      <div key={evt.id || eIdx} className="relative pl-3 pb-2 last:pb-0">
+                        <div className={`absolute -left-[19px] top-1 w-2.5 h-2.5 rounded-full ${
+                          eIdx === 0 ? 'bg-blue-600 ring-4 ring-blue-100' : 'bg-slate-300'
+                        }`} />
+                        <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1">
+                          <span className="font-extrabold text-xs text-slate-900">{evt.statusLabel}</span>
+                          <span className="text-[10px] font-mono text-slate-400">
+                            {new Date(evt.timestamp).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                          </span>
+                        </div>
+                        <p className="text-[11px] font-medium text-slate-700 mt-0.5">{evt.description}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] text-slate-500 bg-slate-200/60 px-2 py-0.5 rounded-md font-medium">
+                            📍 {evt.location}
+                          </span>
+                          <span className="text-[9px] text-slate-400 italic">
+                            ({evt.source === 'MANUAL_ADMIN' ? 'Diperbarui Manual Admin' : 'Sistem'})
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Pipeline progress */}
             <div>
@@ -1246,6 +1639,16 @@ export default function ShopMarketplaceView({ onBackToMain }: ShopMarketplaceVie
             <Package className="w-3.5 h-3.5 text-blue-600" />
             <span>Lacak Pesanan</span>
           </button>
+
+          {/* Admin Shop Portal Link */}
+          <a
+            href="?role=shop-admin"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-900 text-white hover:bg-black shadow-xs cursor-pointer active:scale-95 transition-all"
+            title="Portal Administrator Tumpang Shop"
+          >
+            <Store className="w-3.5 h-3.5 text-blue-400" />
+            <span className="hidden sm:inline">Admin Shop</span>
+          </a>
 
           {/* Store Open Status Badge */}
           {shopConfig && (

@@ -126,6 +126,7 @@ export interface Order {
   updatedAt: string;
   paymentExpiresAt: string; // ISO string (createdAt + 10 mins)
   preOrderDate?: string; // e.g. "2026-07-03" (YYYY-MM-DD)
+  clientRequestId?: string;
 }
 
 export interface LicenseKey {

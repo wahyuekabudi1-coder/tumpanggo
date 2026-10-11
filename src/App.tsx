@@ -11,11 +11,12 @@ import AdminView from './components/AdminView.tsx';
 import AuthModal from './components/AuthModal.tsx';
 import PortalLogin from './components/PortalLogin.tsx';
 import MerchantRegisterPage from './components/MerchantRegisterPage.tsx';
+import ShopAdminView from './components/ShopAdminView.tsx';
 import { SystemConfig } from './types.ts';
 import { ShieldAlert, Key, HelpCircle, Store, Navigation, ChevronRight } from 'lucide-react';
 
 export default function App() {
-  const [currentRole, setCurrentRole] = useState<'CUSTOMER' | 'MERCHANT' | 'DRIVER' | 'ADMIN'>('CUSTOMER');
+  const [currentRole, setCurrentRole] = useState<'CUSTOMER' | 'MERCHANT' | 'DRIVER' | 'ADMIN' | 'SHOP_ADMIN'>('CUSTOMER');
   const [activeMerchantId, setActiveMerchantId] = useState<string>('');
   const [activeDriverId, setActiveDriverId] = useState<string>('');
   const [merchantPortalTab, setMerchantPortalTab] = useState<'login' | 'register'>('login');
@@ -49,7 +50,9 @@ export default function App() {
     const idParam = params.get('id') || params.get('merchantId') || params.get('driverId');
     const demoParam = params.get('demo') || params.get('dev');
 
-    if (roleParam && ['CUSTOMER', 'MERCHANT', 'DRIVER', 'ADMIN'].includes(roleParam)) {
+    if (page === 'shop-admin' || roleParam === 'SHOP_ADMIN' || roleParam === 'SHOP-ADMIN' || roleParam === 'SHOPADMIN') {
+      setCurrentRole('SHOP_ADMIN');
+    } else if (roleParam && ['CUSTOMER', 'MERCHANT', 'DRIVER', 'ADMIN', 'SHOP_ADMIN'].includes(roleParam)) {
       setCurrentRole(roleParam as any);
       if (roleParam === 'MERCHANT' && idParam) {
         setActiveMerchantId(idParam);
@@ -123,7 +126,7 @@ export default function App() {
     }
   }, [currentRole, activeDriverId, verifiedEmail, drivers]);
 
-  const handleRoleSelection = (role: 'CUSTOMER' | 'MERCHANT' | 'DRIVER' | 'ADMIN', id?: string, initialTab?: 'login' | 'register') => {
+  const handleRoleSelection = (role: 'CUSTOMER' | 'MERCHANT' | 'DRIVER' | 'ADMIN' | 'SHOP_ADMIN', id?: string, initialTab?: 'login' | 'register') => {
     setCurrentRole(role);
     setVerifiedEmail('');
     if (role === 'MERCHANT') {
@@ -391,6 +394,12 @@ export default function App() {
               }}
             />
           )
+        )}
+
+        {currentRole === 'SHOP_ADMIN' && (
+          <ShopAdminView 
+            onBackToCustomer={() => setCurrentRole('CUSTOMER')} 
+          />
         )}
       </div>
 

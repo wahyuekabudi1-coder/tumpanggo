@@ -49,15 +49,19 @@ app.use(authenticateToken);
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
   try {
-    const storageStatus = await foodDb.getStorageStatus();
-    const isHealthy = storageStatus.liveCloudConnected;
+    const [foodStorageStatus, shopStorageStatus] = await Promise.all([
+      foodDb.getStorageStatus(),
+      shopDb.getStorageStatus()
+    ]);
+    const isHealthy = foodStorageStatus.liveCloudConnected;
     const isProd = foodConfig.isProduction;
 
     res.status(isProd && !isHealthy ? 503 : 200).json({
       status: isHealthy ? 'healthy' : (isProd ? 'degraded_disconnected_from_cloud' : 'ok_development_resilient_mode'),
-      system: 'tumpang-food',
+      system: 'tumpang-go-ecosystem',
       environment: process.env.NODE_ENV || 'development',
-      database: storageStatus,
+      foodDatabase: foodStorageStatus,
+      shopDatabase: shopStorageStatus,
       timestamp: new Date().toISOString()
     });
   } catch (err: any) {

@@ -11,12 +11,15 @@ import fs from 'fs';
 import path from 'path';
 import { 
   ShopProduct, ShopCategory, ShopOrder, ShopConfig, ShopAuditLog,
-  ShopPaymentStatus, ShopOrderStatus, ShopOrderItem
+  ShopPaymentStatus, ShopOrderStatus, ShopOrderItem,
+  ShopShipment, ShopTrackingEvent, ShopShipmentStatus, ShopShipmentScope
 } from '../types/shop';
+import { courierRegistry } from './shipping/courierAdapters';
 import { shopConfig } from './config';
 import { 
   getAdminDb, safeAdminSetDoc, safeAdminDeleteDoc, safeAdminGetDoc, 
-  safeAdminGetDocs, removeUndefinedFields, isFirestoreAdminConfigured 
+  safeAdminGetDocs, removeUndefinedFields, isFirestoreAdminConfigured,
+  testFirestoreConnection
 } from './firebaseAdmin';
 
 const SHOP_DB_FILE = shopConfig.localDbFile;
@@ -26,6 +29,7 @@ interface ShopDatabaseSchema {
   categories: ShopCategory[];
   products: ShopProduct[];
   orders: ShopOrder[];
+  shipments: ShopShipment[];
   auditLogs: ShopAuditLog[];
 }
 
@@ -252,6 +256,7 @@ export class ShopDatabase {
       categories: initialCategories,
       products: initialProducts,
       orders: [],
+      shipments: [],
       auditLogs: []
     };
     this.loadFromFile();
@@ -267,6 +272,24 @@ export class ShopDatabase {
     }
   }
 
+  public async getStorageStatus() {
+    const firestoreCheck = await testFirestoreConnection();
+    return {
+      system: 'tumpang-shop',
+      storageMode: firestoreCheck.connected ? 'cloud_firestore_active' : 'local_resilient_snapshot',
+      databaseId: firestoreCheck.databaseId,
+      projectId: firestoreCheck.projectId,
+      isProduction: shopConfig.isProduction,
+      firestoreConfigured: isFirestoreAdminConfigured(),
+      usingServiceAccount: firestoreCheck.usingServiceAccount,
+      authIdentity: firestoreCheck.authIdentity,
+      liveCloudConnected: firestoreCheck.connected,
+      collections: shopConfig.collections,
+      diagnosticReason: firestoreCheck.diagnosticReason,
+      diagnosticDetail: firestoreCheck.diagnosticDetail
+    };
+  }
+
   private loadFromFile() {
     try {
       if (fs.existsSync(SHOP_DB_FILE)) {
@@ -278,6 +301,7 @@ export class ShopDatabase {
             categories: Array.isArray(parsed.categories) ? parsed.categories : initialCategories,
             products: Array.isArray(parsed.products) ? parsed.products : initialProducts,
             orders: Array.isArray(parsed.orders) ? parsed.orders : [],
+            shipments: Array.isArray(parsed.shipments) ? parsed.shipments : [],
             auditLogs: Array.isArray(parsed.auditLogs) ? parsed.auditLogs : []
           };
           return;
@@ -305,13 +329,22 @@ export class ShopDatabase {
     }
   }
 
+  private lastSyncTimestamp = 0;
+  private readonly CACHE_TTL_MS = 15000;
+
   /**
    * Asynchronous cold-start initialization and bidirectional Firestore synchronization
+   * Uses Firestore as primary source of truth.
    */
-  public async ensureInitialized(): Promise<void> {
-    if (this.isInitialized) return;
+  public async ensureInitialized(forceRefresh = false): Promise<void> {
+    if (this.isInitialized && !forceRefresh && (Date.now() - this.lastSyncTimestamp < this.CACHE_TTL_MS)) {
+      return;
+    }
 
     if (!isFirestoreAdminConfigured()) {
+      if (shopConfig.isProduction) {
+        throw new Error('[Produksi] Firebase Admin SDK tidak terkonfigurasi untuk Tumpang Shop. Operasi database ditolak demi integritas data.');
+      }
       this.isInitialized = true;
       return;
     }
@@ -319,7 +352,7 @@ export class ShopDatabase {
     try {
       const col = shopConfig.collections;
 
-      // 1. Sync Shop Config
+      // 1. Sync Shop Config (Primary: Cloud)
       const cloudConfig = await safeAdminGetDoc(col.config, 'main');
       if (cloudConfig) {
         this.data.config = { ...this.data.config, ...cloudConfig };
@@ -350,13 +383,32 @@ export class ShopDatabase {
       // 4. Sync Shop Orders
       const cloudOrders = await safeAdminGetDocs(col.orders);
       if (cloudOrders && cloudOrders.length > 0) {
-        this.data.orders = cloudOrders as ShopOrder[];
+        this.data.orders = (cloudOrders as ShopOrder[]).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      }
+
+      // 5. Sync Shop Shipments
+      const cloudShipments = await safeAdminGetDocs(col.shipments);
+      if (cloudShipments && cloudShipments.length > 0) {
+        this.data.shipments = (cloudShipments as ShopShipment[]).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      }
+
+      // 6. Sync Shop Audit Logs
+      const cloudLogs = await safeAdminGetDocs(col.auditLogs);
+      if (cloudLogs && cloudLogs.length > 0) {
+        this.data.auditLogs = (cloudLogs as ShopAuditLog[])
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, 500);
       }
 
       this.saveToFile();
       this.isInitialized = true;
-      console.log('[TumpangShop DB] Sinkronisasi Firestore Admin untuk Tumpang Shop berhasil.');
+      this.lastSyncTimestamp = Date.now();
+      console.log('[TumpangShop DB] Sinkronisasi Firestore Admin untuk Tumpang Shop berhasil (Primary Store Active).');
     } catch (err: any) {
+      if (shopConfig.isProduction) {
+        this.isInitialized = false;
+        throw new Error(`[Produksi] Gagal sinkronisasi data Tumpang Shop dengan Cloud Firestore: ${err.message}. Operasi ditolak demi menjaga integritas data.`);
+      }
       console.warn('[TumpangShop DB] Sinkronisasi cloud gagal atau offline, berjalan dengan cache lokal:', err.message);
       this.isInitialized = true;
     }
@@ -509,7 +561,11 @@ export class ShopDatabase {
     if (!input.name || input.name.trim().length === 0) {
       throw new Error('Nama produk wajib diisi.');
     }
-    if (typeof input.price !== 'number' || input.price < 0) {
+    const effectivePrice = typeof (input as any).price === 'number' 
+      ? (input as any).price 
+      : (typeof (input as any).basePrice === 'number' ? (input as any).basePrice : undefined);
+
+    if (typeof effectivePrice !== 'number' || effectivePrice < 0) {
       throw new Error('Harga produk harus berupa angka valid non-negatif.');
     }
     if (typeof input.stock !== 'number' || input.stock < 0) {
@@ -526,7 +582,7 @@ export class ShopDatabase {
       name: input.name.trim(),
       description: input.description || '',
       categoryId: input.categoryId || (this.data.categories[0]?.id || 'scat_sembako'),
-      price: Math.round(input.price),
+      price: Math.round(effectivePrice),
       stock: Math.floor(input.stock),
       unit: input.unit || 'pcs',
       images: Array.isArray(input.images) && input.images.length > 0 ? input.images : ['https://images.unsplash.com/photo-1542838132-92c53300491e?w=500&auto=format&fit=crop&q=60'],
@@ -551,9 +607,12 @@ export class ShopDatabase {
     }
 
     const current = this.data.products[index];
+    const effectivePrice = typeof updates.price === 'number' 
+      ? updates.price 
+      : (typeof (updates as any).basePrice === 'number' ? (updates as any).basePrice : current.price);
 
     // Validate price and stock if modified
-    if (updates.price !== undefined && (typeof updates.price !== 'number' || updates.price < 0)) {
+    if (typeof effectivePrice !== 'number' || effectivePrice < 0) {
       throw new Error('Harga produk harus berupa angka valid non-negatif.');
     }
     if (updates.stock !== undefined && (typeof updates.stock !== 'number' || updates.stock < 0)) {
@@ -564,7 +623,7 @@ export class ShopDatabase {
       ...current,
       ...updates,
       id: current.id, // Immutable ID
-      price: updates.price !== undefined ? Math.round(updates.price) : current.price,
+      price: Math.round(effectivePrice),
       stock: updates.stock !== undefined ? Math.floor(updates.stock) : current.stock,
       updatedAt: new Date().toISOString()
     };
@@ -731,14 +790,24 @@ export class ShopDatabase {
       shippingMethodLabel = 'Ambil Sendiri di Toko (Pickup)';
     } else if (method === 'REGULAR') {
       deliveryFee = Math.max(0, Math.round(this.data.config.defaultDeliveryFee * 0.7));
-      shippingMethodLabel = 'Kurir Reguler (Kirim Besok Pagi)';
+      shippingMethodLabel = 'Kurir Reguler Toko (Next-Day)';
+    } else if (method === 'EXPEDITION_REGULAR') {
+      deliveryFee = 12000;
+      shippingMethodLabel = 'Ekspedisi Domestik Reguler (J&T / JNE)';
+    } else if (method === 'CHINA_AIR_EXPRESS') {
+      deliveryFee = 35000;
+      shippingMethodLabel = 'China Air Freight Express (7-12 Hari)';
+    } else if (method === 'CHINA_SEA_STANDARD') {
+      deliveryFee = 20000;
+      shippingMethodLabel = 'China Sea Freight Ekonomis (20-30 Hari)';
     }
 
     const serviceFee = this.data.config.serviceFee;
     const uniqueCode = Math.floor(100 + Math.random() * 899); // 100-999
     const total = subtotal + deliveryFee + serviceFee + uniqueCode;
 
-    // 7. Deduct Stock in backend memory immediately
+    // 7. Deduct Stock in backend memory
+    const updatedProducts: ShopProduct[] = [];
     for (const item of validatedItems) {
       const pIndex = this.data.products.findIndex(p => p.id === item.productId);
       if (pIndex !== -1) {
@@ -752,7 +821,7 @@ export class ShopDatabase {
             opt.stock = Math.max(0, opt.stock - item.quantity);
           }
         }
-        safeAdminSetDoc(shopConfig.collections.products, prod.id, removeUndefinedFields(prod)).catch(() => {});
+        updatedProducts.push(prod);
       }
     }
 
@@ -765,8 +834,70 @@ export class ShopDatabase {
     const dailyCount = this.data.orders.filter(o => o.createdAt.startsWith(now.toISOString().slice(0, 10))).length + 1;
     const orderNumber = `TS-${datePrefix}-${String(dailyCount).padStart(3, '0')}`;
 
+    // Determine initial shipment profile based on shippingMethod
+    const isInternational = method.includes('CHINA') || method.includes('CROSSBORDER') || method === 'INTERNATIONAL';
+    const shipmentScope: ShopShipmentScope = isInternational ? 'INTERNATIONAL' : 'LOCAL';
+    const courierCode = isInternational 
+      ? 'CHINA_ID_CROSSBORDER' 
+      : (method === 'EXPEDITION_REGULAR' ? 'DOMESTIC_EXPEDITION' : 'TUMPANG_LOCAL');
+    const courierName = isInternational 
+      ? 'Layanan Impor Cross-Border (China 🇨🇳 → Indonesia 🇮🇩)'
+      : (method === 'EXPEDITION_REGULAR' ? 'Ekspedisi Domestik Reguler (J&T / JNE)' : 'Kurir Toko Tumpang Go');
+    
+    const trackingPrefix = isInternational ? 'CN-ID' : (method === 'EXPEDITION_REGULAR' ? 'TS-EXP' : 'TS-LOC');
+    const trackingNumber = `${trackingPrefix}-${datePrefix}-${String(dailyCount).padStart(3, '0')}`;
+
+    const originCountry = isInternational ? 'CN' : 'ID';
+    const originCity = isInternational ? 'Gudang Konsolidasi Shenzhen, China' : 'Kecamatan Tumpang, Malang';
+    const destinationCountry = 'ID';
+    const destinationCity = `${input.customerDistrict}, Malang`;
+
+    const initialTrackingEvent: ShopTrackingEvent = {
+      id: `tevt_${Date.now()}_1`,
+      status: ShopShipmentStatus.WAITING_DISPATCH,
+      statusLabel: 'Menunggu Pengiriman',
+      location: originCity,
+      description: isInternational 
+        ? 'Pesanan impor telah dibuat. Menunggu pengemasan dari gudang konsolidasi China.'
+        : 'Pesanan telah dibuat dan siap dikemas setelah pembayaran diverifikasi.',
+      timestamp: now.toISOString(),
+      source: 'SYSTEM'
+    };
+
+    const estimatedArrival = isInternational 
+      ? (method === 'CHINA_SEA_STANDARD' ? '20-30 hari kalender (Estimasi unverified)' : '7-12 hari kerja (Estimasi unverified)')
+      : (method === 'EXPEDITION_REGULAR' ? '2-3 hari kerja (Estimasi manual unverified)' : (method === 'REGULAR' ? '1 hari (Next-day)' : '1-3 jam (Same-day)'));
+
+    const initialShipment: ShopShipment = {
+      id: `ship_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      orderId: `sord_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      orderNumber,
+      scope: shipmentScope,
+      courierCode,
+      courierName,
+      serviceType: method,
+      serviceName: shippingMethodLabel,
+      trackingNumber,
+      originCountry,
+      originCity,
+      destinationCountry,
+      destinationCity,
+      shippingCost: deliveryFee,
+      estimatedArrival,
+      isEstimateVerified: !isInternational && method !== 'EXPEDITION_REGULAR',
+      status: ShopShipmentStatus.WAITING_DISPATCH,
+      statusLabel: 'Menunggu Pengiriman',
+      trackingHistory: [initialTrackingEvent],
+      liveCourierApiIntegrated: false, // Kurir API belum live, diupdate manual admin
+      courierAdapterNote: isInternational 
+        ? 'Layanan kargo impor China → Indonesia. Pembaruan nomor resi dan tracking dicatat manual oleh admin toko.'
+        : 'Pengantaran kurir lokal Tumpang. Status dikelola langsung oleh admin toko.',
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
+    };
+
     const newOrder: ShopOrder = {
-      id: `sord_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      id: initialShipment.orderId,
       orderNumber,
       customerName: input.customerName.trim(),
       customerPhone: input.customerPhone.trim(),
@@ -785,16 +916,76 @@ export class ShopDatabase {
       paymentStatus: ShopPaymentStatus.UNPAID,
       orderStatus: ShopOrderStatus.NEW,
       paymentExpiresAt: expiresAt,
+      shipment: initialShipment,
       createdAt: now.toISOString(),
       updatedAt: now.toISOString()
     };
 
     this.data.orders.unshift(newOrder);
-    this.saveToFile();
-    await safeAdminSetDoc(shopConfig.collections.orders, newOrder.id, removeUndefinedFields(newOrder));
-    this.logAudit('CREATE_SHOP_ORDER', `Pesanan dibuat: ${newOrder.orderNumber} senilai Rp ${newOrder.total.toLocaleString('id-ID')}`, 'CUSTOMER', 'CUSTOMER');
+    this.data.shipments.unshift(initialShipment);
+
+    const probe = await testFirestoreConnection();
+    const shouldEnforceFirestore = shopConfig.isProduction || probe.connected;
+
+    if (shouldEnforceFirestore) {
+      const persistedOrder = await safeAdminSetDoc(shopConfig.collections.orders, newOrder.id, removeUndefinedFields(newOrder));
+      const persistedShipment = await safeAdminSetDoc(shopConfig.collections.shipments, initialShipment.id, removeUndefinedFields(initialShipment));
+
+      // Persist stock updates to Firestore
+      let allStockPersisted = true;
+      for (const prod of updatedProducts) {
+        const prodPersisted = await safeAdminSetDoc(shopConfig.collections.products, prod.id, removeUndefinedFields(prod));
+        if (!prodPersisted) allStockPersisted = false;
+      }
+
+      if (!persistedOrder || !persistedShipment || !allStockPersisted) {
+        // Rollback stock in memory and Firestore
+        for (const item of validatedItems) {
+          const pIndex = this.data.products.findIndex(p => p.id === item.productId);
+          if (pIndex !== -1) {
+            const prod = this.data.products[pIndex];
+            prod.stock += item.quantity;
+            if (item.selectedVariation && prod.variations) {
+              const v = prod.variations.find(v => v.id === item.selectedVariation?.variationId);
+              const opt = v?.options.find(o => o.id === item.selectedVariation?.optionId);
+              if (opt) {
+                opt.stock = (opt.stock || 0) + item.quantity;
+              }
+            }
+            await safeAdminSetDoc(shopConfig.collections.products, prod.id, removeUndefinedFields(prod));
+          }
+        }
+        this.data.orders.shift();
+        this.data.shipments.shift();
+        if (persistedOrder) {
+          await safeAdminDeleteDoc(shopConfig.collections.orders, newOrder.id);
+        }
+        if (persistedShipment) {
+          await safeAdminDeleteDoc(shopConfig.collections.shipments, initialShipment.id);
+        }
+        this.saveToFile();
+        throw new Error('Gagal menyimpan pesanan Tumpang Shop ke cloud Firestore. Transaksi dibatalkan secara aman demi mencegah kehilangan data atau transaksi ganda.');
+      }
+    } else {
+      this.saveToFile();
+      safeAdminSetDoc(shopConfig.collections.orders, newOrder.id, removeUndefinedFields(newOrder)).catch(() => {});
+      safeAdminSetDoc(shopConfig.collections.shipments, initialShipment.id, removeUndefinedFields(initialShipment)).catch(() => {});
+    }
+
+    this.logAudit('CREATE_SHOP_ORDER', `Pesanan dibuat: ${newOrder.orderNumber} (Resi: ${initialShipment.trackingNumber}) senilai Rp ${newOrder.total.toLocaleString('id-ID')}`, 'CUSTOMER', 'CUSTOMER');
 
     return newOrder;
+  }
+
+  public attachShipment(order: ShopOrder): ShopOrder {
+    const shipment = this.data.shipments.find(s => 
+      s.orderId === order.id || 
+      s.orderNumber.toLowerCase() === order.orderNumber.toLowerCase()
+    );
+    return {
+      ...order,
+      shipment: shipment ? { ...shipment } : order.shipment
+    };
   }
 
   public getOrders(filter?: { paymentStatus?: string; orderStatus?: string }): ShopOrder[] {
@@ -808,11 +999,14 @@ export class ShopDatabase {
       list = list.filter(o => o.orderStatus === filter.orderStatus);
     }
 
-    return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return list
+      .map(o => this.attachShipment(o))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
   public getOrderById(id: string): ShopOrder | undefined {
-    return this.data.orders.find(o => o.id === id || o.orderNumber.toLowerCase() === id.toLowerCase());
+    const order = this.data.orders.find(o => o.id === id || o.orderNumber.toLowerCase() === id.toLowerCase());
+    return order ? this.attachShipment(order) : undefined;
   }
 
   /**
@@ -824,7 +1018,7 @@ export class ShopDatabase {
     const cleanPhone = phone.replace(/[^0-9]/g, '');
     const normUserPhone = cleanPhone.startsWith('62') ? '0' + cleanPhone.slice(2) : cleanPhone;
 
-    return this.data.orders.find(o => {
+    const matched = this.data.orders.find(o => {
       const matchId = o.id.toLowerCase() === orderNumberOrId.toLowerCase() ||
                       o.orderNumber.toLowerCase() === orderNumberOrId.toLowerCase();
       if (!matchId) return false;
@@ -836,14 +1030,64 @@ export class ShopDatabase {
              normUserPhone.endsWith(normOrderPhone.slice(-8)) || 
              normOrderPhone.endsWith(normUserPhone.slice(-8));
     });
+
+    return matched ? this.attachShipment(matched) : undefined;
+  }
+
+  public async findOrderById(id: string): Promise<ShopOrder | undefined> {
+    if (!id) return undefined;
+    const cleanId = id.trim();
+    let order = this.getOrderById(cleanId);
+    if (!order && isFirestoreAdminConfigured()) {
+      try {
+        const directDoc = await safeAdminGetDoc(shopConfig.collections.orders, cleanId);
+        if (directDoc) {
+          order = directDoc as ShopOrder;
+          const idx = this.data.orders.findIndex(o => o.id === order!.id);
+          if (idx >= 0) this.data.orders[idx] = order;
+          else this.data.orders.unshift(order);
+        }
+      } catch (e: any) {
+        console.warn(`[TumpangShop DB] Query remote order ${cleanId} failed:`, e.message);
+      }
+    }
+    return order ? this.attachShipment(order) : undefined;
+  }
+
+  public async findOrderByNumberAndPhone(orderNumberOrId: string, phone: string): Promise<ShopOrder | undefined> {
+    if (!orderNumberOrId || !phone) return undefined;
+    let order = this.getOrderByNumberAndPhone(orderNumberOrId, phone);
+    if (!order && isFirestoreAdminConfigured()) {
+      try {
+        const directDoc = await safeAdminGetDoc(shopConfig.collections.orders, orderNumberOrId);
+        if (directDoc) {
+          const cleanPhone = phone.replace(/[^0-9]/g, '');
+          const normUserPhone = cleanPhone.startsWith('62') ? '0' + cleanPhone.slice(2) : cleanPhone;
+          const orderClean = (directDoc.customerPhone || '').replace(/[^0-9]/g, '');
+          const normOrderPhone = orderClean.startsWith('62') ? '0' + orderClean.slice(2) : orderClean;
+          if (normUserPhone === normOrderPhone || normUserPhone.endsWith(normOrderPhone.slice(-8)) || normOrderPhone.endsWith(normUserPhone.slice(-8))) {
+            order = directDoc as ShopOrder;
+            const idx = this.data.orders.findIndex(o => o.id === order!.id);
+            if (idx >= 0) this.data.orders[idx] = order;
+            else this.data.orders.unshift(order);
+          }
+        }
+      } catch (e: any) {
+        console.warn(`[TumpangShop DB] Query remote order failed:`, e.message);
+      }
+    }
+    return order ? this.attachShipment(order) : undefined;
   }
 
   public getOrdersByCustomerPhone(phone: string): ShopOrder[] {
     const clean = phone.replace(/[^0-9]/g, '');
-    return this.data.orders.filter(o => {
-      const orderPhone = o.customerPhone.replace(/[^0-9]/g, '');
-      return orderPhone.endsWith(clean) || clean.endsWith(orderPhone);
-    }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return this.data.orders
+      .filter(o => {
+        const orderPhone = o.customerPhone.replace(/[^0-9]/g, '');
+        return orderPhone.endsWith(clean) || clean.endsWith(orderPhone);
+      })
+      .map(o => this.attachShipment(o))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
   public async uploadPaymentProof(orderId: string, proofUrl: string): Promise<ShopOrder> {
@@ -860,12 +1104,27 @@ export class ShopDatabase {
       throw new Error('Pesanan ini telah dibatalkan.');
     }
 
+    const prevProof = order.paymentProof;
+    const prevStatus = order.paymentStatus;
+    const prevUpdatedAt = order.updatedAt;
+
     order.paymentProof = proofUrl;
     order.paymentStatus = ShopPaymentStatus.WAITING_VERIFICATION;
     order.updatedAt = new Date().toISOString();
 
+    const probe = await testFirestoreConnection();
+    if (shopConfig.isProduction || probe.connected) {
+      const persisted = await safeAdminSetDoc(shopConfig.collections.orders, order.id, removeUndefinedFields(order));
+      if (!persisted) {
+        order.paymentProof = prevProof;
+        order.paymentStatus = prevStatus;
+        order.updatedAt = prevUpdatedAt;
+        this.saveToFile();
+        throw new Error('Gagal menyimpan bukti pembayaran ke cloud Firestore. Transaksi dibatalkan secara aman.');
+      }
+    }
+
     this.saveToFile();
-    await safeAdminSetDoc(shopConfig.collections.orders, order.id, removeUndefinedFields(order));
     this.logAudit('UPLOAD_PAYMENT_PROOF', `Bukti bayar diunggah untuk ${order.orderNumber}`, 'CUSTOMER', 'CUSTOMER');
     return { ...order };
   }
@@ -877,6 +1136,12 @@ export class ShopDatabase {
     }
 
     const order = this.data.orders[index];
+    const prevPaymentStatus = order.paymentStatus;
+    const prevOrderStatus = order.orderStatus;
+    const prevVerifiedAt = order.paymentVerifiedAt;
+    const prevCancelReason = order.cancelReason;
+    const prevUpdatedAt = order.updatedAt;
+
     const now = new Date().toISOString();
 
     if (approved) {
@@ -893,8 +1158,22 @@ export class ShopDatabase {
     }
 
     order.updatedAt = now;
+
+    const probe = await testFirestoreConnection();
+    if (shopConfig.isProduction || probe.connected) {
+      const persisted = await safeAdminSetDoc(shopConfig.collections.orders, order.id, removeUndefinedFields(order));
+      if (!persisted) {
+        order.paymentStatus = prevPaymentStatus;
+        order.orderStatus = prevOrderStatus;
+        order.paymentVerifiedAt = prevVerifiedAt;
+        order.cancelReason = prevCancelReason;
+        order.updatedAt = prevUpdatedAt;
+        this.saveToFile();
+        throw new Error('Gagal memperbarui verifikasi pembayaran ke cloud Firestore. Perubahan status dibatalkan.');
+      }
+    }
+
     this.saveToFile();
-    await safeAdminSetDoc(shopConfig.collections.orders, order.id, removeUndefinedFields(order));
     return { ...order };
   }
 
@@ -906,6 +1185,9 @@ export class ShopDatabase {
 
     const order = this.data.orders[index];
     const prevStatus = order.orderStatus;
+    const prevPaymentStatus = order.paymentStatus;
+    const prevCancelReason = order.cancelReason;
+    const prevUpdatedAt = order.updatedAt;
 
     if (prevStatus === newStatus) {
       return { ...order };
@@ -926,7 +1208,7 @@ export class ShopDatabase {
               opt.stock += item.quantity;
             }
           }
-          safeAdminSetDoc(shopConfig.collections.products, prod.id, removeUndefinedFields(prod)).catch(() => {});
+          await safeAdminSetDoc(shopConfig.collections.products, prod.id, removeUndefinedFields(prod));
         }
       }
       order.cancelReason = reason || 'Pesanan dibatalkan.';
@@ -938,10 +1220,240 @@ export class ShopDatabase {
     order.orderStatus = newStatus;
     order.updatedAt = new Date().toISOString();
 
+    const probe = await testFirestoreConnection();
+    if (shopConfig.isProduction || probe.connected) {
+      const persisted = await safeAdminSetDoc(shopConfig.collections.orders, order.id, removeUndefinedFields(order));
+      if (!persisted) {
+        order.orderStatus = prevStatus;
+        order.paymentStatus = prevPaymentStatus;
+        order.cancelReason = prevCancelReason;
+        order.updatedAt = prevUpdatedAt;
+        this.saveToFile();
+        throw new Error('Gagal memperbarui status pesanan pada cloud Firestore. Perubahan dibatalkan demi integritas data.');
+      }
+    }
+
     this.saveToFile();
-    await safeAdminSetDoc(shopConfig.collections.orders, order.id, removeUndefinedFields(order));
     this.logAudit('UPDATE_ORDER_STATUS', `Status pesanan ${order.orderNumber} diubah: ${prevStatus} -> ${newStatus}`, actorId);
     return { ...order };
+  }
+
+  // ==========================================
+  // SHIPMENT & TRACKING OPERATIONS (PART 5)
+  // ==========================================
+
+  public getShipments(): ShopShipment[] {
+    return [...this.data.shipments].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  public getShipmentById(id: string): ShopShipment | undefined {
+    return this.data.shipments.find(s => s.id === id || s.trackingNumber.toLowerCase() === id.toLowerCase());
+  }
+
+  public getShipmentByOrderId(orderId: string): ShopShipment | undefined {
+    return this.data.shipments.find(s => s.orderId === orderId);
+  }
+
+  public getShipmentByTrackingNumber(trackingNumber: string): ShopShipment | undefined {
+    if (!trackingNumber) return undefined;
+    return this.data.shipments.find(s => s.trackingNumber.toLowerCase() === trackingNumber.trim().toLowerCase());
+  }
+
+  public getShippingOptions() {
+    return courierRegistry.getAvailableShippingOptions();
+  }
+
+  public async createShipment(actorId: string, input: {
+    orderId: string;
+    courierCode?: string;
+    serviceType?: string;
+    trackingNumber?: string;
+    originCountry?: string;
+    originCity?: string;
+    destinationCountry?: string;
+    destinationCity?: string;
+    shippingCost?: number;
+    estimatedArrival?: string;
+    initialLocation?: string;
+    initialNotes?: string;
+  }): Promise<ShopShipment> {
+    const order = this.data.orders.find(o => o.id === input.orderId || o.orderNumber.toLowerCase() === input.orderId.toLowerCase());
+    if (!order) {
+      throw new Error(`Pesanan dengan ID / Nomor "${input.orderId}" tidak ditemukan.`);
+    }
+
+    // Determine adapter or default
+    const courierCode = input.courierCode || 'TUMPANG_LOCAL';
+    const adapter = courierRegistry.get(courierCode) || courierRegistry.get('TUMPANG_LOCAL')!;
+    const scope: ShopShipmentScope = adapter.scope;
+    const isInternational = scope === 'INTERNATIONAL';
+
+    const datePrefix = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const defaultResi = isInternational 
+      ? `CN-ID-${datePrefix}-${Math.floor(1000 + Math.random() * 9000)}` 
+      : `TS-EXP-${datePrefix}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const trackingNumber = (input.trackingNumber && input.trackingNumber.trim().length > 0)
+      ? input.trackingNumber.trim().toUpperCase()
+      : defaultResi;
+
+    const originCountry = input.originCountry || adapter.originCountry;
+    const originCity = input.originCity || adapter.originCity;
+    const destinationCountry = input.destinationCountry || adapter.destinationCountry;
+    const destinationCity = input.destinationCity || `${order.customerDistrict || 'Kecamatan Tumpang'}, Malang`;
+
+    const initialStatus = ShopShipmentStatus.WAITING_DISPATCH;
+    const now = new Date().toISOString();
+
+    const initialEvent: ShopTrackingEvent = {
+      id: `tevt_${Date.now()}_1`,
+      status: initialStatus,
+      statusLabel: 'Menunggu Pengiriman',
+      location: input.initialLocation || originCity,
+      description: input.initialNotes || (isInternational 
+        ? 'Data pengiriman internasional dibuat oleh admin. Menunggu jadwal kargo.' 
+        : 'Data pengiriman dibuat oleh admin. Paket menunggu penjemputan.'),
+      timestamp: now,
+      source: 'MANUAL_ADMIN'
+    };
+
+    // Remove old shipment for this order if existed
+    const existingIndex = this.data.shipments.findIndex(s => s.orderId === order.id);
+    if (existingIndex !== -1) {
+      this.data.shipments.splice(existingIndex, 1);
+    }
+
+    const newShipment: ShopShipment = {
+      id: `ship_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      scope,
+      courierCode: adapter.code,
+      courierName: adapter.name,
+      serviceType: input.serviceType || 'REGULAR',
+      serviceName: `${adapter.name} (${input.serviceType || 'Standar'})`,
+      trackingNumber,
+      originCountry,
+      originCity,
+      destinationCountry,
+      destinationCity,
+      shippingCost: typeof input.shippingCost === 'number' ? input.shippingCost : order.deliveryFee,
+      estimatedArrival: input.estimatedArrival || (isInternational ? '7-12 hari kerja (Estimasi unverified)' : '1-2 hari'),
+      isEstimateVerified: !isInternational,
+      status: initialStatus,
+      statusLabel: 'Menunggu Pengiriman',
+      trackingHistory: [initialEvent],
+      liveCourierApiIntegrated: adapter.isConfigured(),
+      courierAdapterNote: adapter.getAdapterNote(),
+      createdAt: now,
+      updatedAt: now
+    };
+
+    this.data.shipments.unshift(newShipment);
+    order.shipment = newShipment;
+    order.updatedAt = now;
+
+    this.saveToFile();
+    await safeAdminSetDoc(shopConfig.collections.shipments, newShipment.id, removeUndefinedFields(newShipment));
+    await safeAdminSetDoc(shopConfig.collections.orders, order.id, removeUndefinedFields(order));
+
+    this.logAudit('CREATE_SHIPMENT', `Pengiriman dibuat untuk ${order.orderNumber} (Resi: ${newShipment.trackingNumber}, Kurir: ${adapter.name})`, actorId);
+    return newShipment;
+  }
+
+  public async updateShipmentStatus(actorId: string, shipmentId: string, newStatus: ShopShipmentStatus, details?: {
+    location?: string;
+    description?: string;
+  }): Promise<ShopShipment> {
+    const index = this.data.shipments.findIndex(s => s.id === shipmentId || s.trackingNumber.toLowerCase() === shipmentId.toLowerCase());
+    if (index === -1) {
+      throw new Error(`Data pengiriman dengan ID / Resi "${shipmentId}" tidak ditemukan.`);
+    }
+
+    const shipment = this.data.shipments[index];
+    const prevStatus = shipment.status;
+    const now = new Date().toISOString();
+
+    const adapter = courierRegistry.get(shipment.courierCode) || courierRegistry.get('TUMPANG_LOCAL')!;
+    const statusMeta = adapter.getRelevantStatuses().find(s => s.status === newStatus);
+
+    const statusLabel = statusMeta?.label || (
+      newStatus === ShopShipmentStatus.WAITING_DISPATCH ? 'Menunggu Pengiriman' :
+      newStatus === ShopShipmentStatus.PROCESSING ? 'Diproses di Gudang' :
+      newStatus === ShopShipmentStatus.DISPATCHED ? 'Dikirim dari Asal' :
+      newStatus === ShopShipmentStatus.IN_TRANSIT ? 'Dalam Perjalanan' :
+      newStatus === ShopShipmentStatus.ARRIVED_INDONESIA ? 'Tiba di Indonesia' :
+      newStatus === ShopShipmentStatus.CUSTOMS_CLEARANCE ? 'Pemeriksaan Bea Cukai' :
+      newStatus === ShopShipmentStatus.TRANSFERRED_LOCAL_COURIER ? 'Diteruskan Kurir Lokal' :
+      newStatus === ShopShipmentStatus.OUT_FOR_DELIVERY ? 'Dalam Pengantaran' :
+      newStatus === ShopShipmentStatus.DELIVERED ? 'Terkirim' :
+      newStatus === ShopShipmentStatus.FAILED_DELIVERY ? 'Gagal Terkirim' :
+      newStatus === ShopShipmentStatus.CUSTOMS_HOLD ? 'Tertahan di Bea Cukai' : newStatus
+    );
+
+    const location = details?.location || (
+      newStatus === ShopShipmentStatus.ARRIVED_INDONESIA ? 'Port of Entry CGK / Tanjung Priok, Indonesia' :
+      newStatus === ShopShipmentStatus.CUSTOMS_CLEARANCE ? 'Kantor Bea & Cukai Jakarta' :
+      newStatus === ShopShipmentStatus.TRANSFERRED_LOCAL_COURIER ? 'Hub Logistik Domestik Jawa Timur' :
+      newStatus === ShopShipmentStatus.OUT_FOR_DELIVERY ? `Kecamatan Tumpang, Malang` :
+      newStatus === ShopShipmentStatus.DELIVERED ? `Alamat Penerima di ${shipment.destinationCity}` :
+      shipment.originCity
+    );
+
+    const description = details?.description || statusMeta?.description || `Status paket diperbarui menjadi ${statusLabel}.`;
+
+    const newEvent: ShopTrackingEvent = {
+      id: `tevt_${Date.now()}_${shipment.trackingHistory.length + 1}`,
+      status: newStatus,
+      statusLabel,
+      location,
+      description,
+      timestamp: now,
+      source: 'MANUAL_ADMIN'
+    };
+
+    shipment.status = newStatus;
+    shipment.statusLabel = statusLabel;
+    shipment.trackingHistory.unshift(newEvent);
+    shipment.updatedAt = now;
+
+    // Update associated order's orderStatus when relevant, BUT NEVER TOUCH paymentStatus!
+    // (Requirement 9: Pastikan perubahan status pengiriman tidak otomatis mengubah status pembayaran)
+    const orderIndex = this.data.orders.findIndex(o => o.id === shipment.orderId);
+    if (orderIndex !== -1) {
+      const order = this.data.orders[orderIndex];
+      order.shipment = shipment;
+      
+      if (newStatus === ShopShipmentStatus.DELIVERED) {
+        if (order.orderStatus !== ShopOrderStatus.COMPLETED) {
+          order.orderStatus = ShopOrderStatus.COMPLETED;
+          order.updatedAt = now;
+        }
+      } else if (
+        newStatus === ShopShipmentStatus.DISPATCHED ||
+        newStatus === ShopShipmentStatus.IN_TRANSIT ||
+        newStatus === ShopShipmentStatus.ARRIVED_INDONESIA ||
+        newStatus === ShopShipmentStatus.TRANSFERRED_LOCAL_COURIER ||
+        newStatus === ShopShipmentStatus.OUT_FOR_DELIVERY
+      ) {
+        if (
+          order.orderStatus === ShopOrderStatus.NEW ||
+          order.orderStatus === ShopOrderStatus.PROCESSING ||
+          order.orderStatus === ShopOrderStatus.PACKED
+        ) {
+          order.orderStatus = ShopOrderStatus.SHIPPED;
+          order.updatedAt = now;
+        }
+      }
+
+      await safeAdminSetDoc(shopConfig.collections.orders, order.id, removeUndefinedFields(order));
+    }
+
+    this.saveToFile();
+    await safeAdminSetDoc(shopConfig.collections.shipments, shipment.id, removeUndefinedFields(shipment));
+
+    this.logAudit('UPDATE_SHIPMENT_STATUS', `Status pengiriman ${shipment.trackingNumber} diubah: ${prevStatus} -> ${newStatus} (${statusLabel})`, actorId);
+    return { ...shipment };
   }
 
   // ==========================================
@@ -949,21 +1461,93 @@ export class ShopDatabase {
   // ==========================================
 
   public getSummaryMetrics() {
+    const todayPrefix = new Date().toISOString().slice(0, 10);
     const totalOrders = this.data.orders.length;
     const paidOrders = this.data.orders.filter(o => o.paymentStatus === ShopPaymentStatus.PAID);
     const totalRevenue = paidOrders.reduce((acc, curr) => acc + curr.total, 0);
     const pendingPaymentVerifications = this.data.orders.filter(o => o.paymentStatus === ShopPaymentStatus.WAITING_VERIFICATION).length;
     const activeProducts = this.data.products.filter(p => p.isActive).length;
-    const lowStockProducts = this.data.products.filter(p => p.stock <= 5).length;
+    const lowStockList = this.data.products
+      .filter(p => p.stock <= 5)
+      .map(p => ({
+        id: p.id,
+        sku: p.sku,
+        name: p.name,
+        stock: p.stock,
+        unit: p.unit,
+        price: p.price ?? (p as any).basePrice ?? 0,
+        isActive: p.isActive
+      }));
+
+    const todayOrders = this.data.orders.filter(o => o.createdAt.startsWith(todayPrefix));
+    const todayPaidOrders = todayOrders.filter(o => o.paymentStatus === ShopPaymentStatus.PAID);
+    const todayRevenue = todayPaidOrders.reduce((acc, curr) => acc + curr.total, 0);
+
+    const pendingShipmentCount = this.data.shipments.filter(s => 
+      s.status !== ShopShipmentStatus.DELIVERED && s.status !== ShopShipmentStatus.FAILED_DELIVERY
+    ).length;
 
     return {
       totalOrders,
       paidOrderCount: paidOrders.length,
       totalRevenue,
+      todayOrderCount: todayOrders.length,
+      todayRevenue,
       pendingPaymentVerifications,
+      pendingShipmentCount,
       activeProducts,
-      lowStockProducts,
+      totalProducts: this.data.products.length,
+      lowStockProducts: lowStockList.length,
+      lowStockList,
       isOpen: this.data.config.isOpen
+    };
+  }
+
+  public getTransactionReport(startDate?: string, endDate?: string) {
+    let orders = [...this.data.orders].map(o => this.attachShipment(o));
+
+    if (startDate) {
+      const start = new Date(startDate).getTime();
+      if (!isNaN(start)) {
+        orders = orders.filter(o => new Date(o.createdAt).getTime() >= start);
+      }
+    }
+
+    if (endDate) {
+      const end = new Date(endDate.includes('T') ? endDate : `${endDate}T23:59:59.999Z`).getTime();
+      if (!isNaN(end)) {
+        orders = orders.filter(o => new Date(o.createdAt).getTime() <= end);
+      }
+    }
+
+    const paidOrders = orders.filter(o => o.paymentStatus === ShopPaymentStatus.PAID);
+    const waitingVerificationOrders = orders.filter(o => o.paymentStatus === ShopPaymentStatus.WAITING_VERIFICATION);
+    const unpaidOrders = orders.filter(o => o.paymentStatus === ShopPaymentStatus.UNPAID);
+    const cancelledOrders = orders.filter(o => o.orderStatus === ShopOrderStatus.CANCELLED);
+
+    const totalRevenue = paidOrders.reduce((sum, o) => sum + o.total, 0);
+    const totalItemsSold = paidOrders.reduce((sum, o) => {
+      return sum + o.items.reduce((iSum, item) => iSum + item.quantity, 0);
+    }, 0);
+
+    const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paidOrders.length) : 0;
+
+    return {
+      period: {
+        startDate: startDate || 'Awal',
+        endDate: endDate || 'Sekarang'
+      },
+      summary: {
+        totalOrders: orders.length,
+        paidOrdersCount: paidOrders.length,
+        waitingVerificationCount: waitingVerificationOrders.length,
+        unpaidOrdersCount: unpaidOrders.length,
+        cancelledOrdersCount: cancelledOrders.length,
+        totalRevenue,
+        totalItemsSold,
+        averageOrderValue
+      },
+      orders: orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     };
   }
 }

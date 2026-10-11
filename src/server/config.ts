@@ -98,6 +98,21 @@ export function validateProductionEnvironment(): { isValid: boolean; errors: str
     }
   }
 
+  const shopSecret = process.env.SHOP_AUTH_SECRET;
+  if (!shopSecret || shopSecret.trim().length < 32) {
+    errors.push('SHOP_AUTH_SECRET wajib disetel dan memiliki minimal 32 karakter untuk Tumpang Shop.');
+  }
+
+  const shopAdminEmail = process.env.SHOP_ADMIN_EMAIL;
+  if (!shopAdminEmail || !shopAdminEmail.includes('@')) {
+    errors.push('SHOP_ADMIN_EMAIL wajib disetel dengan alamat email yang sah untuk Tumpang Shop.');
+  }
+
+  const shopAdminPassword = process.env.SHOP_ADMIN_PASSWORD;
+  if (!shopAdminPassword || shopAdminPassword.trim().length < 8) {
+    errors.push('SHOP_ADMIN_PASSWORD wajib disetel dengan minimal 8 karakter untuk Tumpang Shop.');
+  }
+
   const portVal = parseInt(process.env.PORT || process.env.FOOD_PORT || '3000', 10);
   if (isNaN(portVal) || portVal < 1 || portVal > 65535) {
     errors.push('PORT atau FOOD_PORT harus berupa angka port TCP yang valid (1-65535).');
@@ -182,6 +197,7 @@ export const shopConfig = {
     categories: 'shop_categories',
     products: 'shop_products',
     orders: 'shop_orders',
+    shipments: 'shop_shipments',
     auditLogs: 'shop_audit_logs',
   },
   defaults: {

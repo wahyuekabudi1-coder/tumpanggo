@@ -252,6 +252,41 @@
         "updatedAt": { "type": "string" }
       },
       "required": ["id", "orderNumber", "customerName", "customerPhone", "deliveryAddress", "subtotal", "total", "paymentStatus", "orderStatus", "createdAt", "updatedAt"]
+    },
+    "ShopShipment": {
+      "title": "ShopShipment",
+      "description": "Logistics and shipping lifecycle tracking record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orderId": { "type": "string" },
+        "orderNumber": { "type": "string" },
+        "scope": { "type": "string" },
+        "courierCode": { "type": "string" },
+        "courierName": { "type": "string" },
+        "trackingNumber": { "type": "string" },
+        "status": { "type": "string" },
+        "statusLabel": { "type": "string" },
+        "originCity": { "type": "string" },
+        "destinationCity": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "orderId", "orderNumber", "scope", "courierCode", "trackingNumber", "status", "createdAt", "updatedAt"]
+    },
+    "ShopAuditLog": {
+      "title": "ShopAuditLog",
+      "description": "Audit trail log for Tumpang Shop administrative and customer operations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "action": { "type": "string" },
+        "userId": { "type": "string" },
+        "role": { "type": "string" },
+        "details": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "action", "userId", "role", "details", "createdAt"]
     }
   },
   "firestore": {
@@ -306,6 +341,14 @@
     "/shop_orders/{orderId}": {
       "schema": "ShopOrder",
       "description": "Tumpang Shop customer orders"
+    },
+    "/shop_shipments/{shipmentId}": {
+      "schema": "ShopShipment",
+      "description": "Tumpang Shop parcel tracking and shipping lifecycles"
+    },
+    "/shop_audit_logs/{logId}": {
+      "schema": "ShopAuditLog",
+      "description": "Tumpang Shop administrative and audit trails"
     }
   }
 }

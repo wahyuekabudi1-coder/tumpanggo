@@ -37,8 +37,8 @@ orderRouter.get('/', (req: Request, res: Response) => {
 });
 
 // Single order tracking (Public tracking with ID)
-orderRouter.get('/:id', (req: Request, res: Response) => {
-  const o = foodDb.getOrderById(req.params.id);
+orderRouter.get('/:id', async (req: Request, res: Response) => {
+  const o = await foodDb.findOrder(req.params.id);
   if (!o) return res.status(404).json({ error: 'Pesanan tidak ditemukan.' });
   res.json(o);
 });
@@ -61,7 +61,7 @@ orderRouter.post('/', async (req: Request, res: Response) => {
 // Order status/details update
 orderRouter.put('/:id', async (req: Request, res: Response) => {
   const user = req.user;
-  const currentOrder = foodDb.getOrderById(req.params.id);
+  const currentOrder = await foodDb.findOrder(req.params.id);
   if (!currentOrder) {
     return res.status(404).json({ error: 'Pesanan tidak ditemukan.' });
   }
@@ -221,7 +221,7 @@ orderRouter.post('/:id/upload-payment', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Bukti pembayaran wajib diunggah.' });
   }
 
-  const order = foodDb.getOrderById(req.params.id);
+  const order = await foodDb.findOrder(req.params.id);
   if (!order) {
     return res.status(404).json({ error: 'Pesanan tidak ditemukan.' });
   }
@@ -272,7 +272,7 @@ orderRouter.post('/:id/upload-delivery', requireRole(['DRIVER', 'ADMIN']), async
     return res.status(400).json({ error: 'Bukti foto pengantaran wajib disertakan.' });
   }
 
-  const order = foodDb.getOrderById(req.params.id);
+  const order = await foodDb.findOrder(req.params.id);
   if (!order) {
     return res.status(404).json({ error: 'Pesanan tidak ditemukan.' });
   }

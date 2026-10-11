@@ -105,8 +105,77 @@ export interface ShopOrder {
   paymentExpiresAt: string;
   cancelReason?: string;
   clientRequestId?: string; // Idempotency key preventing duplicate submission
+  shipment?: ShopShipment;
   createdAt: string;
   updatedAt: string;
+}
+
+export type ShopShipmentScope = 'LOCAL' | 'INTERNATIONAL';
+
+export enum ShopShipmentStatus {
+  WAITING_DISPATCH = 'WAITING_DISPATCH',                   // Menunggu Pengiriman
+  PROCESSING = 'PROCESSING',                               // Diproses di Gudang
+  DISPATCHED = 'DISPATCHED',                               // Dikirim
+  IN_TRANSIT = 'IN_TRANSIT',                               // Dalam Perjalanan
+  ARRIVED_INDONESIA = 'ARRIVED_INDONESIA',                 // Tiba di Indonesia (Port of Entry)
+  CUSTOMS_CLEARANCE = 'CUSTOMS_CLEARANCE',                 // Pemeriksaan Bea Cukai
+  TRANSFERRED_LOCAL_COURIER = 'TRANSFERRED_LOCAL_COURIER', // Diteruskan Kurir Lokal
+  OUT_FOR_DELIVERY = 'OUT_FOR_DELIVERY',                   // Dalam Pengantaran
+  DELIVERED = 'DELIVERED',                                 // Terkirim
+  FAILED_DELIVERY = 'FAILED_DELIVERY',                     // Gagal Terkirim
+  CUSTOMS_HOLD = 'CUSTOMS_HOLD'                            // Tertahan di Bea Cukai
+}
+
+export interface ShopTrackingEvent {
+  id: string;
+  status: ShopShipmentStatus;
+  statusLabel: string;
+  location: string;
+  description: string;
+  timestamp: string;
+  source: 'MANUAL_ADMIN' | 'COURIER_API_STUB' | 'SYSTEM';
+}
+
+export interface ShopShipment {
+  id: string;
+  orderId: string;
+  orderNumber: string;
+  scope: ShopShipmentScope;
+  courierCode: string;
+  courierName: string;
+  serviceType: string;
+  serviceName: string;
+  trackingNumber: string;
+  originCountry: string;      // e.g. "ID", "CN"
+  originCity: string;         // e.g. "Tumpang, Malang" or "Shenzhen, Guangdong"
+  destinationCountry: string; // e.g. "ID"
+  destinationCity: string;    // e.g. "Kecamatan Tumpang, Malang"
+  shippingCost: number;
+  estimatedArrival: string;
+  isEstimateVerified: boolean;
+  status: ShopShipmentStatus;
+  statusLabel: string;
+  trackingHistory: ShopTrackingEvent[];
+  liveCourierApiIntegrated: boolean; // false until real courier API credentials exist
+  courierAdapterNote: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ShopShippingOption {
+  code: string;
+  courierCode: string;
+  courierName: string;
+  serviceName: string;
+  scope: ShopShipmentScope;
+  originCountry: string;
+  originCity: string;
+  estimatedDays: string;
+  baseCost: number;
+  description: string;
+  isAvailable: boolean;
+  isLiveApiIntegrated: boolean;
+  note: string;
 }
 
 export interface ShopConfig {
@@ -130,3 +199,4 @@ export interface ShopAuditLog {
   details: string;
   createdAt: string;
 }
+
