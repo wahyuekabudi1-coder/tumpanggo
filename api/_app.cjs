@@ -605,14 +605,19 @@ function getAdminDb() {
 function isFirestoreAdminConfigured() {
   return adminDb !== null;
 }
-async function testFirestoreConnection() {
+var lastProbeResult = null;
+var PROBE_CACHE_TTL_MS = 15e3;
+async function testFirestoreConnection(force = false) {
+  if (!force && lastProbeResult && Date.now() - lastProbeResult.timestamp < PROBE_CACHE_TTL_MS) {
+    return { ...lastProbeResult.result };
+  }
   const probeId = `probe_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   let canRead = false;
   let canWrite = false;
   let probeError = void 0;
   let diagnosticReason = "OK";
   if (!adminDb) {
-    return {
+    const res = {
       connected: false,
       canRead: false,
       canWrite: false,
@@ -625,12 +630,21 @@ async function testFirestoreConnection() {
       diagnosticDetail: "Firebase Admin SDK belum berhasil diinisialisasi karena ketiadaan konfigurasi dasar.",
       remediationStep: "Periksa file firebase-applet-config.json dan setel variabel lingkungan FIREBASE_PROJECT_ID."
     };
+    lastProbeResult = { timestamp: Date.now(), result: res };
+    return res;
   }
   const probeRef = adminDb.collection("_systemConnectionProbe").doc(probeId);
   const withTimeout = (p, ms = 2500, label = "Operation") => {
+    let timer;
+    const timeoutPromise = new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+      if (timer && typeof timer.unref === "function") timer.unref();
+    });
     return Promise.race([
-      p,
-      new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms))
+      p.finally(() => {
+        if (timer) clearTimeout(timer);
+      }),
+      timeoutPromise
     ]);
   };
   try {
@@ -697,7 +711,7 @@ async function testFirestoreConnection() {
     }
   }
   const isFullyConnected = canRead && canWrite;
-  return {
+  const result = {
     connected: isFullyConnected,
     canRead,
     canWrite,
@@ -710,6 +724,8 @@ async function testFirestoreConnection() {
     diagnosticDetail,
     remediationStep: isFullyConnected ? void 0 : remediationStep
   };
+  lastProbeResult = { timestamp: Date.now(), result };
+  return result;
 }
 async function safeAdminSetDoc(collectionName, docId, data) {
   if (!adminDb) return false;

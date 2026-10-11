@@ -216,7 +216,14 @@ export interface FirestoreProbeResult {
  * without touching customer or merchant business data.
  * Accurately diagnoses whether errors stem from IAM permissions, missing credentials, or database mismatch.
  */
-export async function testFirestoreConnection(): Promise<FirestoreProbeResult> {
+let lastProbeResult: { timestamp: number; result: FirestoreProbeResult } | null = null;
+const PROBE_CACHE_TTL_MS = 15000;
+
+export async function testFirestoreConnection(force = false): Promise<FirestoreProbeResult> {
+  if (!force && lastProbeResult && (Date.now() - lastProbeResult.timestamp < PROBE_CACHE_TTL_MS)) {
+    return { ...lastProbeResult.result };
+  }
+
   const probeId = `probe_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   let canRead = false;
   let canWrite = false;
@@ -224,7 +231,7 @@ export async function testFirestoreConnection(): Promise<FirestoreProbeResult> {
   let diagnosticReason: FirestoreProbeResult['diagnosticReason'] = 'OK';
 
   if (!adminDb) {
-    return {
+    const res: FirestoreProbeResult = {
       connected: false,
       canRead: false,
       canWrite: false,
@@ -237,14 +244,23 @@ export async function testFirestoreConnection(): Promise<FirestoreProbeResult> {
       diagnosticDetail: 'Firebase Admin SDK belum berhasil diinisialisasi karena ketiadaan konfigurasi dasar.',
       remediationStep: 'Periksa file firebase-applet-config.json dan setel variabel lingkungan FIREBASE_PROJECT_ID.'
     };
+    lastProbeResult = { timestamp: Date.now(), result: res };
+    return res;
   }
 
   const probeRef = adminDb.collection('_systemConnectionProbe').doc(probeId);
 
   const withTimeout = <T>(p: Promise<T>, ms = 2500, label = 'Operation'): Promise<T> => {
+    let timer: any;
+    const timeoutPromise = new Promise<T>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+      if (timer && typeof timer.unref === 'function') timer.unref();
+    });
     return Promise.race([
-      p,
-      new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms))
+      p.finally(() => {
+        if (timer) clearTimeout(timer);
+      }),
+      timeoutPromise
     ]);
   };
 
@@ -320,7 +336,7 @@ export async function testFirestoreConnection(): Promise<FirestoreProbeResult> {
   }
 
   const isFullyConnected = canRead && canWrite;
-  return {
+  const result: FirestoreProbeResult = {
     connected: isFullyConnected,
     canRead,
     canWrite,
@@ -335,6 +351,8 @@ export async function testFirestoreConnection(): Promise<FirestoreProbeResult> {
     diagnosticDetail,
     remediationStep: isFullyConnected ? undefined : remediationStep
   };
+  lastProbeResult = { timestamp: Date.now(), result };
+  return result;
 }
 
 /**
