@@ -32,8 +32,14 @@ shopRouter.post('/auth/login', (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Email dan kata sandi wajib diisi.' });
   }
 
+  if (shopConfig.isProduction && targetPass === 'TumpangShopAdmin#2026') {
+    return res.status(401).json({ 
+      error: 'Kata sandi default ditolak pada lingkungan produksi demi keamanan. Atur SHOP_ADMIN_PASSWORD di environment variable.' 
+    });
+  }
+
   const isMatchingEmail = targetUser === shopConfig.adminEmail || targetUser === 'shopadmin';
-  const isMatchingPassword = targetPass === shopConfig.adminPassword;
+  const isMatchingPassword = shopConfig.adminPassword && targetPass === shopConfig.adminPassword;
 
   if (!isMatchingEmail || !isMatchingPassword) {
     return res.status(401).json({ 

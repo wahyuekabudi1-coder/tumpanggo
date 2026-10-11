@@ -29,7 +29,12 @@ const localDbFile = isServerless
   : path.join(process.cwd(), 'tumpang_food_db.json');
 
 // Security & Authentication Configuration
-let runtimeAdminPassword = process.env.FOOD_ADMIN_PASSWORD || 'TumpangGoAdmin#2026';
+let runtimeAdminPassword = process.env.FOOD_ADMIN_PASSWORD;
+if (!runtimeAdminPassword && process.env.NODE_ENV !== 'production') {
+  runtimeAdminPassword = 'TumpangGoAdmin#2026';
+} else if (!runtimeAdminPassword) {
+  runtimeAdminPassword = '';
+}
 let runtimeAdminEmail = process.env.FOOD_ADMIN_EMAIL || 'tumpanggo@gmail.com';
 
 // Production Strict Verification
@@ -39,6 +44,8 @@ export function validateProductionEnvironment(): { isValid: boolean; errors: str
   const secret = process.env.FOOD_AUTH_SECRET;
   if (!secret || secret.trim().length < 32) {
     errors.push('FOOD_AUTH_SECRET wajib disetel dan memiliki minimal 32 karakter.');
+  } else if (secret.includes('dev_secret_fallback') || secret.includes('fallback_do_not_use')) {
+    errors.push('FOOD_AUTH_SECRET tidak boleh menggunakan string fallback/development pada mode produksi.');
   }
 
   const adminEmail = process.env.FOOD_ADMIN_EMAIL;
@@ -49,6 +56,8 @@ export function validateProductionEnvironment(): { isValid: boolean; errors: str
   const adminPassword = process.env.FOOD_ADMIN_PASSWORD;
   if (!adminPassword || adminPassword.trim().length < 8) {
     errors.push('FOOD_ADMIN_PASSWORD wajib disetel dengan minimal 8 karakter.');
+  } else if (adminPassword === 'TumpangGoAdmin#2026') {
+    errors.push('FOOD_ADMIN_PASSWORD tidak boleh menggunakan kata sandi default/contoh ("TumpangGoAdmin#2026") pada mode produksi.');
   }
 
   let projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCP_PROJECT;
@@ -101,6 +110,8 @@ export function validateProductionEnvironment(): { isValid: boolean; errors: str
   const shopSecret = process.env.SHOP_AUTH_SECRET;
   if (!shopSecret || shopSecret.trim().length < 32) {
     errors.push('SHOP_AUTH_SECRET wajib disetel dan memiliki minimal 32 karakter untuk Tumpang Shop.');
+  } else if (shopSecret.includes('shop_secret_fallback') || shopSecret.includes('fallback_key')) {
+    errors.push('SHOP_AUTH_SECRET tidak boleh menggunakan string fallback/development pada mode produksi.');
   }
 
   const shopAdminEmail = process.env.SHOP_ADMIN_EMAIL;
@@ -111,6 +122,8 @@ export function validateProductionEnvironment(): { isValid: boolean; errors: str
   const shopAdminPassword = process.env.SHOP_ADMIN_PASSWORD;
   if (!shopAdminPassword || shopAdminPassword.trim().length < 8) {
     errors.push('SHOP_ADMIN_PASSWORD wajib disetel dengan minimal 8 karakter untuk Tumpang Shop.');
+  } else if (shopAdminPassword === 'TumpangShopAdmin#2026') {
+    errors.push('SHOP_ADMIN_PASSWORD tidak boleh menggunakan kata sandi default/contoh ("TumpangShopAdmin#2026") pada mode produksi.');
   }
 
   const portVal = parseInt(process.env.PORT || process.env.FOOD_PORT || '3000', 10);
@@ -180,7 +193,12 @@ const shopDbFile = isServerless
   : path.join(process.cwd(), 'tumpang_shop_db.json');
 
 const runtimeShopAdminEmail = (process.env.SHOP_ADMIN_EMAIL || 'shopadmin@tumpanggo.com').toLowerCase().trim();
-const runtimeShopAdminPassword = process.env.SHOP_ADMIN_PASSWORD || 'TumpangShopAdmin#2026';
+let runtimeShopAdminPassword = process.env.SHOP_ADMIN_PASSWORD;
+if (!runtimeShopAdminPassword && process.env.NODE_ENV !== 'production') {
+  runtimeShopAdminPassword = 'TumpangShopAdmin#2026';
+} else if (!runtimeShopAdminPassword) {
+  runtimeShopAdminPassword = '';
+}
 let runtimeShopAuthSecret = process.env.SHOP_AUTH_SECRET;
 if (!runtimeShopAuthSecret || runtimeShopAuthSecret.trim().length < 32) {
   runtimeShopAuthSecret = runtimeJwtSecret;

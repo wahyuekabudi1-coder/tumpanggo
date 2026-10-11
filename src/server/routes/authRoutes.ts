@@ -30,8 +30,12 @@ authRouter.post('/login', (req: Request, res: Response) => {
 
   // 1. ADMIN LOGIN
   if (role === 'ADMIN') {
+    if (foodConfig.isProduction && cleanPass === 'TumpangGoAdmin#2026') {
+      return res.status(401).json({ error: 'Kata sandi default ditolak pada lingkungan produksi demi keamanan. Atur FOOD_ADMIN_PASSWORD di environment variable.' });
+    }
+
     const isTargetAdmin = isAdminEmail(cleanUser);
-    const isValidAdminPass = cleanPass === foodConfig.adminPassword;
+    const isValidAdminPass = foodConfig.adminPassword && cleanPass === foodConfig.adminPassword;
 
     if (!isTargetAdmin || !isValidAdminPass) {
       return res.status(401).json({ error: 'Email atau kata sandi Administrator salah.' });

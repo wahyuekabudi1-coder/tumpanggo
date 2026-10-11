@@ -2,23 +2,25 @@
 node_modules/
 .pnp
 .pnp.js
+bun.lock
 
 # Environment Variables & Secrets (CRITICAL)
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
 *.pem
 *.key
-service-account*.json
-credentials.json
+*service*account*.json
+*service-account*.json
+*firebase-adminsdk*.json
+*credentials*.json
 
 # Local runtime & database cache files
 tumpang_db.json
 tumpang_food_db.json
 tumpang_food_db.json.backup.json
 tumpang_shop_db.json
+tumpang*_db*.json
 *.backup.json
 
 # Build outputs & Bundles
