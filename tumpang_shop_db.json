@@ -1,0 +1,556 @@
+{
+  "config": {
+    "id": "shop_config_default",
+    "storeName": "Tumpang Shop Mart",
+    "storeAddress": "Area Pasar Tumpang, Kec. Tumpang, Malang",
+    "storePhone": "081234567890",
+    "isOpen": true,
+    "qrisImage": "https://images.unsplash.com/photo-1628157582853-a796fa650a6a?w=400&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+    "defaultDeliveryFee": 4000,
+    "serviceFee": 1500,
+    "minOrderAmount": 10000,
+    "updatedAt": "2026-10-11T10:12:48.136Z"
+  },
+  "categories": [
+    {
+      "id": "scat_sembako",
+      "name": "Sembako & Kebutuhan Pokok",
+      "slug": "sembako",
+      "description": "Beras, minyak goreng, gula, tepung, telur, dan sembako berkualitas.",
+      "icon": "Package",
+      "orderIndex": 1,
+      "isActive": true,
+      "createdAt": "2026-10-11T10:12:48.137Z",
+      "updatedAt": "2026-10-11T10:12:48.137Z"
+    },
+    {
+      "id": "scat_bumbu",
+      "name": "Sayur Segar & Bumbu Dapur",
+      "slug": "bumbu-sayur",
+      "description": "Bahan segar dari pasar Tumpang langsung ke dapur Anda.",
+      "icon": "Carrot",
+      "orderIndex": 2,
+      "isActive": true,
+      "createdAt": "2026-10-11T10:12:48.137Z",
+      "updatedAt": "2026-10-11T10:12:48.137Z"
+    },
+    {
+      "id": "scat_khas",
+      "name": "Oleh-Oleh & Khas Tumpang",
+      "slug": "khas-tumpang",
+      "description": "Kopi Semeru Dampit, keripik tempe sagu, dan jajanan khas Tumpang.",
+      "icon": "Coffee",
+      "orderIndex": 3,
+      "isActive": true,
+      "createdAt": "2026-10-11T10:12:48.137Z",
+      "updatedAt": "2026-10-11T10:12:48.137Z"
+    },
+    {
+      "id": "scat_kebersihan",
+      "name": "Kebersihan & Rumah Tangga",
+      "slug": "kebersihan",
+      "description": "Sabun, deterjen, sampo, dan perlengkapan kebersihan rumah.",
+      "icon": "Sparkles",
+      "orderIndex": 4,
+      "isActive": true,
+      "createdAt": "2026-10-11T10:12:48.137Z",
+      "updatedAt": "2026-10-11T10:12:48.137Z"
+    }
+  ],
+  "products": [
+    {
+      "id": "sprod_beras_5kg",
+      "sku": "TS-SBK-001",
+      "name": "Beras Premium Petani Tumpang 5kg",
+      "description": "Beras putih pulen hasil panen langsung petani lokal lereng Gunung Semeru, bersih tanpa pemutih & pengawet.",
+      "categoryId": "scat_sembako",
+      "price": 73500,
+      "stock": 45,
+      "unit": "sak",
+      "images": [
+        "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=500&auto=format&fit=crop&q=60"
+      ],
+      "variations": [
+        {
+          "id": "var_berat_beras",
+          "name": "Pilihan Kemasan",
+          "options": [
+            {
+              "id": "opt_5kg",
+              "name": "5 kg (Standar)",
+              "priceDelta": 0,
+              "stock": 45,
+              "sku": "TS-SBK-001-5KG"
+            },
+            {
+              "id": "opt_10kg",
+              "name": "10 kg (Hemat)",
+              "priceDelta": 71500,
+              "stock": 20,
+              "sku": "TS-SBK-001-10KG"
+            }
+          ]
+        }
+      ],
+      "isActive": true,
+      "isFeatured": true,
+      "createdAt": "2026-10-11T10:12:48.137Z",
+      "updatedAt": "2026-10-11T10:12:48.137Z"
+    },
+    {
+      "id": "sprod_minyak_goreng_1l",
+      "sku": "TS-SBK-002",
+      "name": "Minyak Goreng MinyaKita 1 Liter",
+      "description": "Minyak goreng kelapa sawit higienis terstandarisasi, jernih untuk aneka gorengan renyah.",
+      "categoryId": "scat_sembako",
+      "price": 16500,
+      "stock": 80,
+      "unit": "liter",
+      "images": [
+        "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=500&auto=format&fit=crop&q=60"
+      ],
+      "variations": [
+        {
+          "id": "var_vol_minyak",
+          "name": "Kemasan",
+          "options": [
+            {
+              "id": "opt_1l",
+              "name": "Bantal 1 Liter",
+              "priceDelta": 0,
+              "stock": 50,
+              "sku": "TS-SBK-002-1L"
+            },
+            {
+              "id": "opt_2l",
+              "name": "Pouch 2 Liter",
+              "priceDelta": 16500,
+              "stock": 30,
+              "sku": "TS-SBK-002-2L"
+            }
+          ]
+        }
+      ],
+      "isActive": true,
+      "isFeatured": true,
+      "createdAt": "2026-10-11T10:12:48.137Z",
+      "updatedAt": "2026-10-11T10:12:48.137Z"
+    },
+    {
+      "id": "sprod_gula_pasir_1kg",
+      "sku": "TS-SBK-003",
+      "name": "Gula Pasir Kristal Putih Rose Brand 1kg",
+      "description": "Gula tebu kristal murni bermutu tinggi, bersih, manis alami untuk teh, kopi, dan adonan.",
+      "categoryId": "scat_sembako",
+      "price": 18000,
+      "stock": 60,
+      "unit": "kg",
+      "images": [
+        "https://images.unsplash.com/photo-1581798459219-318e76aecc7b?w=500&auto=format&fit=crop&q=60"
+      ],
+      "isActive": true,
+      "isFeatured": false,
+      "createdAt": "2026-10-11T10:12:48.137Z",
+      "updatedAt": "2026-10-11T10:12:48.137Z"
+    },
+    {
+      "id": "sprod_kopi_dampit_250g",
+      "sku": "TS-KHS-001",
+      "name": "Kopi Robusta Lereng Semeru Dampit 250gr",
+      "description": "Kopi bubuk premium petik merah asli lereng selatan Semeru, aroma harum dengan citarasa cokelat pekat.",
+      "categoryId": "scat_khas",
+      "price": 32000,
+      "stock": 35,
+      "unit": "bungkus",
+      "images": [
+        "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=500&auto=format&fit=crop&q=60"
+      ],
+      "variations": [
+        {
+          "id": "var_roast_kopi",
+          "name": "Tingkat Gilingan",
+          "options": [
+            {
+              "id": "opt_halus",
+              "name": "Bubuk Halus (Tubruk)",
+              "priceDelta": 0,
+              "stock": 20,
+              "sku": "TS-KHS-001-FINE"
+            },
+            {
+              "id": "opt_medium",
+              "name": "Giling Medium (V60/Filter)",
+              "priceDelta": 0,
+              "stock": 15,
+              "sku": "TS-KHS-001-MED"
+            }
+          ]
+        }
+      ],
+      "isActive": true,
+      "isFeatured": true,
+      "createdAt": "2026-10-11T10:12:48.137Z",
+      "updatedAt": "2026-10-11T10:12:48.137Z"
+    },
+    {
+      "id": "sprod_keripik_tempe_tumpang",
+      "sku": "TS-KHS-002",
+      "name": "Keripik Tempe Sagu Renyah Khas Tumpang 200gr",
+      "description": "Keripik tempe sagu legendaris gurih renyah tanpa pengawet, oleh-oleh favorit wisatawan Bromo & Tumpang.",
+      "categoryId": "scat_khas",
+      "price": 15000,
+      "stock": 50,
+      "unit": "bungkus",
+      "images": [
+        "https://images.unsplash.com/photo-1613758201502-bd79b54a4181?w=500&auto=format&fit=crop&q=60"
+      ],
+      "isActive": true,
+      "isFeatured": true,
+      "createdAt": "2026-10-11T10:12:48.137Z",
+      "updatedAt": "2026-10-11T10:12:48.137Z"
+    },
+    {
+      "id": "sprod_telur_ayam_1kg",
+      "sku": "TS-SBK-004",
+      "name": "Telur Ayam Negeri Segar Pilihan 1kg",
+      "description": "Telur ayam peternak lokal Malang, isi 15-17 butir per kg, selalu fresh harian tanpa cangkang retak.",
+      "categoryId": "scat_bumbu",
+      "price": 27500,
+      "stock": 40,
+      "unit": "kg",
+      "images": [
+        "https://images.unsplash.com/photo-1516467508483-a7212febe31a?w=500&auto=format&fit=crop&q=60"
+      ],
+      "isActive": true,
+      "isFeatured": false,
+      "createdAt": "2026-10-11T10:12:48.137Z",
+      "updatedAt": "2026-10-11T10:12:48.137Z"
+    },
+    {
+      "id": "sprod_bawang_merah_500g",
+      "sku": "TS-BMB-001",
+      "name": "Bawang Merah Super Tumpang 500gr",
+      "description": "Bawang merah kering pilihan dari petani lokal, aroma kuat, padat, dan tahan lama.",
+      "categoryId": "scat_bumbu",
+      "price": 19000,
+      "stock": 30,
+      "unit": "pack",
+      "images": [
+        "https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?w=500&auto=format&fit=crop&q=60"
+      ],
+      "isActive": true,
+      "isFeatured": false,
+      "createdAt": "2026-10-11T10:12:48.137Z",
+      "updatedAt": "2026-10-11T10:12:48.137Z"
+    },
+    {
+      "id": "sprod_sabun_nuvo_450ml",
+      "sku": "TS-KBH-001",
+      "name": "Sabun Mandi Cair Nuvo Family Refill 450ml",
+      "description": "Perlindungan antibakteri keluarga dengan wangi segar menyejukkan, melembapkan kulit seharian.",
+      "categoryId": "scat_kebersihan",
+      "price": 21500,
+      "stock": 25,
+      "unit": "pouch",
+      "images": [
+        "https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?w=500&auto=format&fit=crop&q=60"
+      ],
+      "isActive": true,
+      "isFeatured": false,
+      "createdAt": "2026-10-11T10:12:48.137Z",
+      "updatedAt": "2026-10-11T10:12:48.137Z"
+    }
+  ],
+  "orders": [
+    {
+      "id": "sord_1791714389947_wl7h",
+      "orderNumber": "TS-20261011-004",
+      "customerName": "Siti Rahmawati",
+      "customerPhone": "081299990002",
+      "deliveryAddress": "Dusun Jago, Kec. Tumpang",
+      "deliveryNotes": "",
+      "items": [
+        {
+          "productId": "sprod_beras_5kg",
+          "sku": "TS-SBK-001",
+          "name": "Beras Premium Petani Tumpang 5kg",
+          "unit": "sak",
+          "price": 73500,
+          "quantity": 2,
+          "subtotal": 147000
+        }
+      ],
+      "subtotal": 147000,
+      "deliveryFee": 4000,
+      "serviceFee": 1500,
+      "uniqueCode": 124,
+      "total": 152624,
+      "paymentStatus": "PAID",
+      "orderStatus": "CANCELLED",
+      "paymentExpiresAt": "2026-10-11T10:56:29.947Z",
+      "createdAt": "2026-10-11T10:26:29.947Z",
+      "updatedAt": "2026-10-11T10:26:30.160Z",
+      "paymentProof": "https://example.com/receipt-proof.jpg",
+      "paymentVerifiedAt": "2026-10-11T10:26:30.070Z",
+      "cancelReason": "Pengujian pengembalian stok"
+    },
+    {
+      "id": "sord_1791714093946_kdte",
+      "orderNumber": "TS-20261011-003",
+      "customerName": "Siti Rahmawati",
+      "customerPhone": "081299990002",
+      "deliveryAddress": "Dusun Jago, Kec. Tumpang",
+      "deliveryNotes": "",
+      "items": [
+        {
+          "productId": "sprod_beras_5kg",
+          "sku": "TS-SBK-001",
+          "name": "Beras Premium Petani Tumpang 5kg",
+          "unit": "sak",
+          "price": 73500,
+          "quantity": 2,
+          "subtotal": 147000
+        }
+      ],
+      "subtotal": 147000,
+      "deliveryFee": 4000,
+      "serviceFee": 1500,
+      "uniqueCode": 648,
+      "total": 153148,
+      "paymentStatus": "PAID",
+      "orderStatus": "CANCELLED",
+      "paymentExpiresAt": "2026-10-11T10:51:33.946Z",
+      "createdAt": "2026-10-11T10:21:33.946Z",
+      "updatedAt": "2026-10-11T10:21:34.174Z",
+      "paymentProof": "https://example.com/receipt-proof.jpg",
+      "paymentVerifiedAt": "2026-10-11T10:21:34.076Z",
+      "cancelReason": "Pengujian pengembalian stok"
+    },
+    {
+      "id": "sord_1791713780250_yfa9",
+      "orderNumber": "TS-20261011-002",
+      "customerName": "Siti Rahmawati",
+      "customerPhone": "081299990002",
+      "deliveryAddress": "Dusun Jago, Kec. Tumpang",
+      "deliveryNotes": "",
+      "items": [
+        {
+          "productId": "sprod_beras_5kg",
+          "sku": "TS-SBK-001",
+          "name": "Beras Premium Petani Tumpang 5kg",
+          "unit": "sak",
+          "price": 73500,
+          "quantity": 2,
+          "subtotal": 147000
+        }
+      ],
+      "subtotal": 147000,
+      "deliveryFee": 4000,
+      "serviceFee": 1500,
+      "uniqueCode": 715,
+      "total": 153215,
+      "paymentStatus": "PAID",
+      "orderStatus": "CANCELLED",
+      "paymentExpiresAt": "2026-10-11T10:46:20.250Z",
+      "createdAt": "2026-10-11T10:16:20.250Z",
+      "updatedAt": "2026-10-11T10:16:20.446Z",
+      "paymentProof": "https://example.com/receipt-proof.jpg",
+      "paymentVerifiedAt": "2026-10-11T10:16:20.366Z",
+      "cancelReason": "Pengujian pengembalian stok"
+    },
+    {
+      "id": "sord_1791713569631_xsg1",
+      "orderNumber": "TS-20261011-001",
+      "customerName": "Siti Rahmawati",
+      "customerPhone": "081299990002",
+      "deliveryAddress": "Dusun Jago, Kec. Tumpang",
+      "deliveryNotes": "",
+      "items": [
+        {
+          "productId": "sprod_beras_5kg",
+          "sku": "TS-SBK-001",
+          "name": "Beras Premium Petani Tumpang 5kg",
+          "unit": "sak",
+          "price": 73500,
+          "quantity": 2,
+          "subtotal": 147000
+        }
+      ],
+      "subtotal": 147000,
+      "deliveryFee": 4000,
+      "serviceFee": 1500,
+      "uniqueCode": 807,
+      "total": 153307,
+      "paymentStatus": "PAID",
+      "orderStatus": "CANCELLED",
+      "paymentExpiresAt": "2026-10-11T10:42:49.631Z",
+      "createdAt": "2026-10-11T10:12:49.631Z",
+      "updatedAt": "2026-10-11T10:12:49.882Z",
+      "paymentProof": "https://example.com/receipt-proof.jpg",
+      "paymentVerifiedAt": "2026-10-11T10:12:49.763Z",
+      "cancelReason": "Pengujian pengembalian stok"
+    }
+  ],
+  "auditLogs": [
+    {
+      "id": "slog_1791714390153_pcrq",
+      "action": "UPDATE_ORDER_STATUS",
+      "userId": "shop_admin_master",
+      "role": "SHOP_ADMIN",
+      "details": "Status pesanan TS-20261011-004 diubah: PROCESSING -> PACKED",
+      "createdAt": "2026-10-11T10:26:30.153Z"
+    },
+    {
+      "id": "slog_1791714390070_fob3",
+      "action": "VERIFY_PAYMENT_APPROVED",
+      "userId": "shop_admin_master",
+      "role": "SHOP_ADMIN",
+      "details": "Pembayaran pesanan TS-20261011-004 diverifikasi sah",
+      "createdAt": "2026-10-11T10:26:30.070Z"
+    },
+    {
+      "id": "slog_1791714390063_cpwf",
+      "action": "UPLOAD_PAYMENT_PROOF",
+      "userId": "CUSTOMER",
+      "role": "CUSTOMER",
+      "details": "Bukti bayar diunggah untuk TS-20261011-004",
+      "createdAt": "2026-10-11T10:26:30.063Z"
+    },
+    {
+      "id": "slog_1791714390014_ql3e",
+      "action": "CREATE_SHOP_ORDER",
+      "userId": "CUSTOMER",
+      "role": "CUSTOMER",
+      "details": "Pesanan dibuat: TS-20261011-004 senilai Rp 152.624",
+      "createdAt": "2026-10-11T10:26:30.014Z"
+    },
+    {
+      "id": "slog_1791714389927_32xf",
+      "action": "SHOP_ADMIN_LOGIN",
+      "userId": "shop_admin_master",
+      "role": "SHOP_ADMIN",
+      "details": "Admin shopadmin@tumpanggo.com berhasil login ke portal Shop",
+      "createdAt": "2026-10-11T10:26:29.927Z"
+    },
+    {
+      "id": "slog_1791714094166_n1t5",
+      "action": "UPDATE_ORDER_STATUS",
+      "userId": "shop_admin_master",
+      "role": "SHOP_ADMIN",
+      "details": "Status pesanan TS-20261011-003 diubah: PROCESSING -> PACKED",
+      "createdAt": "2026-10-11T10:21:34.166Z"
+    },
+    {
+      "id": "slog_1791714094076_sb0m",
+      "action": "VERIFY_PAYMENT_APPROVED",
+      "userId": "shop_admin_master",
+      "role": "SHOP_ADMIN",
+      "details": "Pembayaran pesanan TS-20261011-003 diverifikasi sah",
+      "createdAt": "2026-10-11T10:21:34.076Z"
+    },
+    {
+      "id": "slog_1791714094068_4jcj",
+      "action": "UPLOAD_PAYMENT_PROOF",
+      "userId": "CUSTOMER",
+      "role": "CUSTOMER",
+      "details": "Bukti bayar diunggah untuk TS-20261011-003",
+      "createdAt": "2026-10-11T10:21:34.068Z"
+    },
+    {
+      "id": "slog_1791714094018_jp5v",
+      "action": "CREATE_SHOP_ORDER",
+      "userId": "CUSTOMER",
+      "role": "CUSTOMER",
+      "details": "Pesanan dibuat: TS-20261011-003 senilai Rp 153.148",
+      "createdAt": "2026-10-11T10:21:34.018Z"
+    },
+    {
+      "id": "slog_1791714093928_sxnb",
+      "action": "SHOP_ADMIN_LOGIN",
+      "userId": "shop_admin_master",
+      "role": "SHOP_ADMIN",
+      "details": "Admin shopadmin@tumpanggo.com berhasil login ke portal Shop",
+      "createdAt": "2026-10-11T10:21:33.928Z"
+    },
+    {
+      "id": "slog_1791713780440_648x",
+      "action": "UPDATE_ORDER_STATUS",
+      "userId": "shop_admin_master",
+      "role": "SHOP_ADMIN",
+      "details": "Status pesanan TS-20261011-002 diubah: PROCESSING -> PACKED",
+      "createdAt": "2026-10-11T10:16:20.440Z"
+    },
+    {
+      "id": "slog_1791713780366_wqvw",
+      "action": "VERIFY_PAYMENT_APPROVED",
+      "userId": "shop_admin_master",
+      "role": "SHOP_ADMIN",
+      "details": "Pembayaran pesanan TS-20261011-002 diverifikasi sah",
+      "createdAt": "2026-10-11T10:16:20.366Z"
+    },
+    {
+      "id": "slog_1791713780360_pu3q",
+      "action": "UPLOAD_PAYMENT_PROOF",
+      "userId": "CUSTOMER",
+      "role": "CUSTOMER",
+      "details": "Bukti bayar diunggah untuk TS-20261011-002",
+      "createdAt": "2026-10-11T10:16:20.360Z"
+    },
+    {
+      "id": "slog_1791713780317_ovwc",
+      "action": "CREATE_SHOP_ORDER",
+      "userId": "CUSTOMER",
+      "role": "CUSTOMER",
+      "details": "Pesanan dibuat: TS-20261011-002 senilai Rp 153.215",
+      "createdAt": "2026-10-11T10:16:20.317Z"
+    },
+    {
+      "id": "slog_1791713780231_tscu",
+      "action": "SHOP_ADMIN_LOGIN",
+      "userId": "shop_admin_master",
+      "role": "SHOP_ADMIN",
+      "details": "Admin shopadmin@tumpanggo.com berhasil login ke portal Shop",
+      "createdAt": "2026-10-11T10:16:20.231Z"
+    },
+    {
+      "id": "slog_1791713569873_509n",
+      "action": "UPDATE_ORDER_STATUS",
+      "userId": "shop_admin_master",
+      "role": "SHOP_ADMIN",
+      "details": "Status pesanan TS-20261011-001 diubah: PROCESSING -> PACKED",
+      "createdAt": "2026-10-11T10:12:49.873Z"
+    },
+    {
+      "id": "slog_1791713569763_ip0b",
+      "action": "VERIFY_PAYMENT_APPROVED",
+      "userId": "shop_admin_master",
+      "role": "SHOP_ADMIN",
+      "details": "Pembayaran pesanan TS-20261011-001 diverifikasi sah",
+      "createdAt": "2026-10-11T10:12:49.763Z"
+    },
+    {
+      "id": "slog_1791713569756_jggs",
+      "action": "UPLOAD_PAYMENT_PROOF",
+      "userId": "CUSTOMER",
+      "role": "CUSTOMER",
+      "details": "Bukti bayar diunggah untuk TS-20261011-001",
+      "createdAt": "2026-10-11T10:12:49.756Z"
+    },
+    {
+      "id": "slog_1791713569699_563i",
+      "action": "CREATE_SHOP_ORDER",
+      "userId": "CUSTOMER",
+      "role": "CUSTOMER",
+      "details": "Pesanan dibuat: TS-20261011-001 senilai Rp 153.307",
+      "createdAt": "2026-10-11T10:12:49.699Z"
+    },
+    {
+      "id": "slog_1791713569611_34wv",
+      "action": "SHOP_ADMIN_LOGIN",
+      "userId": "shop_admin_master",
+      "role": "SHOP_ADMIN",
+      "details": "Admin shopadmin@tumpanggo.com berhasil login ke portal Shop",
+      "createdAt": "2026-10-11T10:12:49.611Z"
+    }
+  ]
+}

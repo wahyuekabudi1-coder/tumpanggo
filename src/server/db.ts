@@ -508,7 +508,7 @@ export class FoodDatabase {
   }
 
   // --- LOGGING ---
-  public log(userId: string, details: string, role: 'ADMIN' | 'MERCHANT' | 'DRIVER' | 'SYSTEM' | 'CUSTOMER' = 'SYSTEM'): AuditLog {
+  public log(userId: string, details: string, role: 'ADMIN' | 'MERCHANT' | 'DRIVER' | 'SYSTEM' | 'CUSTOMER' | 'SHOP_ADMIN' = 'SYSTEM'): AuditLog {
     const logItem: AuditLog = {
       id: 'log_' + Math.random().toString(36).substring(2, 9),
       action: details.split(' ')[0] || 'ACTION',
@@ -1021,7 +1021,7 @@ export class FoodDatabase {
     userId: string,
     id: string,
     updates: Partial<Order>,
-    role: 'ADMIN' | 'MERCHANT' | 'DRIVER' | 'SYSTEM' | 'CUSTOMER'
+    role: 'ADMIN' | 'MERCHANT' | 'DRIVER' | 'SYSTEM' | 'CUSTOMER' | 'SHOP_ADMIN'
   ): Promise<Order> {
     const index = this.data.orders.findIndex(o => o.id === id);
     if (index === -1) throw new Error('Order not found');

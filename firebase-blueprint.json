@@ -179,6 +179,79 @@
         "createdAt": { "type": "string", "description": "Generation timestamp ISO string" }
       },
       "required": ["key", "durationDays", "status", "createdAt"]
+    },
+    "ShopConfig": {
+      "title": "ShopConfig",
+      "description": "Configuration settings specifically for Tumpang Shop marketplace",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "storeName": { "type": "string" },
+        "storeAddress": { "type": "string" },
+        "storePhone": { "type": "string" },
+        "isOpen": { "type": "boolean" },
+        "qrisImage": { "type": "string" },
+        "defaultDeliveryFee": { "type": "number" },
+        "serviceFee": { "type": "number" },
+        "minOrderAmount": { "type": "number" }
+      },
+      "required": ["id", "storeName", "isOpen", "defaultDeliveryFee", "serviceFee", "minOrderAmount"]
+    },
+    "ShopCategory": {
+      "title": "ShopCategory",
+      "description": "Marketplace product category",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "slug": { "type": "string" },
+        "orderIndex": { "type": "number" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "name", "slug", "orderIndex", "isActive", "createdAt", "updatedAt"]
+    },
+    "ShopProduct": {
+      "title": "ShopProduct",
+      "description": "Retail marketplace item with SKU, variations, and stock",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "sku": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "price": { "type": "number" },
+        "stock": { "type": "number" },
+        "unit": { "type": "string" },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "sku", "name", "categoryId", "price", "stock", "unit", "isActive", "createdAt", "updatedAt"]
+    },
+    "ShopOrder": {
+      "title": "ShopOrder",
+      "description": "Marketplace grocery customer order with isolated payment status and order status",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orderNumber": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "deliveryAddress": { "type": "string" },
+        "subtotal": { "type": "number" },
+        "deliveryFee": { "type": "number" },
+        "serviceFee": { "type": "number" },
+        "total": { "type": "number" },
+        "paymentStatus": { "type": "string" },
+        "orderStatus": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "orderNumber", "customerName", "customerPhone", "deliveryAddress", "subtotal", "total", "paymentStatus", "orderStatus", "createdAt", "updatedAt"]
     }
   },
   "firestore": {
@@ -217,6 +290,22 @@
     "/licenses/{licenseKey}": {
       "schema": "LicenseKey",
       "description": "Premium contract licenses for stores"
+    },
+    "/shop_config/main": {
+      "schema": "ShopConfig",
+      "description": "Tumpang Shop singleton configuration"
+    },
+    "/shop_categories/{categoryId}": {
+      "schema": "ShopCategory",
+      "description": "Tumpang Shop categories"
+    },
+    "/shop_products/{productId}": {
+      "schema": "ShopProduct",
+      "description": "Tumpang Shop products"
+    },
+    "/shop_orders/{orderId}": {
+      "schema": "ShopOrder",
+      "description": "Tumpang Shop customer orders"
     }
   }
 }

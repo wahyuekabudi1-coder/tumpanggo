@@ -8,13 +8,14 @@
 
 import crypto from 'crypto';
 import { Request, Response, NextFunction } from 'express';
-import { foodConfig } from './config';
+import { foodConfig, shopConfig } from './config';
 
 export interface AuthUser {
   userId: string;
-  role: 'ADMIN' | 'MERCHANT' | 'DRIVER' | 'CUSTOMER';
+  role: 'ADMIN' | 'MERCHANT' | 'DRIVER' | 'CUSTOMER' | 'SHOP_ADMIN';
   email?: string;
   entityId?: string; // Merchant ID or Driver ID
+  scope?: 'food' | 'shop';
 }
 
 declare global {
@@ -80,7 +81,29 @@ export function createAuthToken(user: AuthUser, expiresInHours = 72): string {
 }
 
 /**
+ * Create HMAC-SHA256 signed JWT token specifically for Tumpang Shop Admin.
+ */
+export function createShopAuthToken(user: AuthUser, expiresInHours = 72): string {
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+  const payload = Buffer.from(
+    JSON.stringify({
+      ...user,
+      scope: 'shop',
+      exp: Math.floor(Date.now() / 1000) + expiresInHours * 3600
+    })
+  ).toString('base64url');
+
+  const signature = crypto
+    .createHmac('sha256', shopConfig.jwtSecret)
+    .update(`${header}.${payload}`)
+    .digest('base64url');
+
+  return `${header}.${payload}.${signature}`;
+}
+
+/**
  * Verify signed token and return AuthUser.
+ * Checks both Food and Shop cryptographic signatures securely.
  */
 export function verifyAuthToken(token: string): AuthUser | null {
   if (!token) return null;
@@ -90,12 +113,29 @@ export function verifyAuthToken(token: string): AuthUser | null {
     if (parts.length !== 3) return null;
     const [header, payload, signature] = parts;
 
-    const expectedSig = crypto
+    // Check with food secret first
+    const foodSig = crypto
       .createHmac('sha256', foodConfig.jwtSecret)
       .update(`${header}.${payload}`)
       .digest('base64url');
 
-    if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig))) {
+    let isValid = false;
+    if (signature.length === foodSig.length) {
+      isValid = crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(foodSig));
+    }
+
+    // If not matching food secret, verify with isolated shop secret
+    if (!isValid && shopConfig.jwtSecret) {
+      const shopSig = crypto
+        .createHmac('sha256', shopConfig.jwtSecret)
+        .update(`${header}.${payload}`)
+        .digest('base64url');
+      if (signature.length === shopSig.length) {
+        isValid = crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(shopSig));
+      }
+    }
+
+    if (!isValid) {
       return null;
     }
 
@@ -108,11 +148,30 @@ export function verifyAuthToken(token: string): AuthUser | null {
       userId: data.userId,
       role: data.role,
       email: data.email,
-      entityId: data.entityId
+      entityId: data.entityId,
+      scope: data.scope
     };
   } catch {
     return null;
   }
+}
+
+/**
+ * Strict authorization middleware for Tumpang Shop Administrator.
+ * Only accepts authenticated users with role 'SHOP_ADMIN'.
+ * Food admin credentials cannot access Shop endpoints.
+ */
+export function requireShopAdmin(req: Request, res: Response, next: NextFunction) {
+  const user = req.user;
+  if (!user) {
+    return res.status(401).json({ error: 'Akses ditolak: Autentikasi Admin Tumpang Shop diperlukan. Silakan login terlebih dahulu.' });
+  }
+
+  if (user.role !== 'SHOP_ADMIN') {
+    return res.status(403).json({ error: 'Akses ditolak: Hanya Administrator Tumpang Shop yang memiliki hak akses untuk tindakan ini.' });
+  }
+
+  next();
 }
 
 /**
@@ -155,7 +214,7 @@ export function isAdminEmail(email?: string): boolean {
 /**
  * Strict role-based access control middleware
  */
-export function requireRole(allowedRoles: Array<'ADMIN' | 'MERCHANT' | 'DRIVER' | 'CUSTOMER'>) {
+export function requireRole(allowedRoles: Array<'ADMIN' | 'MERCHANT' | 'DRIVER' | 'CUSTOMER' | 'SHOP_ADMIN'>) {
   return (req: Request, res: Response, next: NextFunction) => {
     const user = req.user;
     if (!user) {

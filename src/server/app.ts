@@ -8,6 +8,7 @@
 
 import express from 'express';
 import { foodDb } from './db';
+import { shopDb } from './shopDb';
 import { foodConfig } from './config';
 import { isFirestoreAdminConfigured, isUsingServiceAccount, testFirestoreConnection } from './firebaseAdmin';
 import { authenticateToken } from './auth';
@@ -16,6 +17,7 @@ import { merchantRouter } from './routes/merchantRoutes';
 import { driverRouter } from './routes/driverRoutes';
 import { orderRouter } from './routes/orderRoutes';
 import { adminRouter } from './routes/adminRoutes';
+import { shopRouter } from './routes/shopRoutes';
 
 export const app = express();
 
@@ -26,7 +28,10 @@ app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 // Lazy asynchronous database synchronization middleware for Serverless & Cold-Starts
 app.use(async (req, res, next) => {
   try {
-    await foodDb.ensureInitialized();
+    await Promise.all([
+      foodDb.ensureInitialized(),
+      shopDb.ensureInitialized()
+    ]);
   } catch (err: any) {
     if (foodConfig.isProduction && req.path.startsWith('/api') && !req.path.startsWith('/api/health')) {
       return res.status(503).json({
@@ -92,6 +97,7 @@ app.use('/api/merchants', merchantRouter);
 app.use('/api/drivers', driverRouter);
 app.use('/api/orders', orderRouter);
 app.use('/api', adminRouter);
+app.use('/api/shop', shopRouter);
 
 // Global Error Handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

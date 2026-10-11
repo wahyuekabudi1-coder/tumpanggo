@@ -180,7 +180,7 @@ export class OrderService {
   public static isValidStatusTransition(
     currentStatus: OrderStatus,
     targetStatus: OrderStatus,
-    role: 'ADMIN' | 'MERCHANT' | 'DRIVER' | 'CUSTOMER' | 'SYSTEM'
+    role: 'ADMIN' | 'MERCHANT' | 'DRIVER' | 'CUSTOMER' | 'SYSTEM' | 'SHOP_ADMIN'
   ): { allowed: boolean; reason?: string } {
     // Admin has master override for legitimate administrative actions
     if (role === 'ADMIN' || role === 'SYSTEM') {

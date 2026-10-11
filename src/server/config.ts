@@ -158,3 +158,41 @@ export const foodConfig = {
     qrisImage: 'https://images.unsplash.com/photo-1628157582853-a796fa650a6a?w=400&auto=format&fit=crop&q=60&ixlib=rb-4.0.3',
   }
 };
+
+// --- TUMPANG SHOP ISOLATED CONFIGURATION ---
+const shopDbFile = isServerless 
+  ? path.join('/tmp', 'tumpang_shop_db.json')
+  : path.join(process.cwd(), 'tumpang_shop_db.json');
+
+const runtimeShopAdminEmail = (process.env.SHOP_ADMIN_EMAIL || 'shopadmin@tumpanggo.com').toLowerCase().trim();
+const runtimeShopAdminPassword = process.env.SHOP_ADMIN_PASSWORD || 'TumpangShopAdmin#2026';
+let runtimeShopAuthSecret = process.env.SHOP_AUTH_SECRET;
+if (!runtimeShopAuthSecret || runtimeShopAuthSecret.trim().length < 32) {
+  runtimeShopAuthSecret = runtimeJwtSecret;
+}
+
+export const shopConfig = {
+  isProduction: process.env.NODE_ENV === 'production',
+  localDbFile: shopDbFile,
+  jwtSecret: runtimeShopAuthSecret || 'shop_secret_fallback_key_min_32_chars_ok',
+  adminEmail: runtimeShopAdminEmail,
+  adminPassword: runtimeShopAdminPassword,
+  collections: {
+    config: 'shop_config',
+    categories: 'shop_categories',
+    products: 'shop_products',
+    orders: 'shop_orders',
+    auditLogs: 'shop_audit_logs',
+  },
+  defaults: {
+    storeName: 'Tumpang Shop Mart',
+    storeAddress: 'Area Pasar Tumpang, Kec. Tumpang, Malang',
+    storePhone: '081234567890',
+    isOpen: true,
+    qrisImage: 'https://images.unsplash.com/photo-1628157582853-a796fa650a6a?w=400&auto=format&fit=crop&q=60&ixlib=rb-4.0.3',
+    defaultDeliveryFee: 4000,
+    serviceFee: 1500,
+    minOrderAmount: 10000,
+    paymentExpiryMinutes: 30,
+  }
+};

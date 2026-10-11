@@ -171,7 +171,7 @@ export interface AuditLog {
   id: string;
   action: string;
   userId: string; // Can be admin id, merchant id, or driver id
-  role: 'ADMIN' | 'MERCHANT' | 'DRIVER' | 'SYSTEM' | 'CUSTOMER';
+  role: 'ADMIN' | 'MERCHANT' | 'DRIVER' | 'SYSTEM' | 'CUSTOMER' | 'SHOP_ADMIN';
   details: string;
   createdAt: string;
 }
@@ -217,4 +217,7 @@ export function calculateTieredServiceFee(subtotal: number): number {
   if (subtotal <= 700000) return 5000;
   return 10000;
 }
+
+// Re-export isolated Tumpang Shop types
+export * from './types/shop';
 

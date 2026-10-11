@@ -5,6 +5,7 @@ import {
 import MapPicker from './MapPicker.tsx';
 import Logo from './Logo.tsx';
 import BannerCarousel from './BannerCarousel.tsx';
+import ShopMarketplaceView from './ShopMarketplaceView.tsx';
 import banner1 from '../assets/images/banner1.jpeg';
 import banner2 from '../assets/images/banner2.jpeg';
 import banner3 from '../assets/images/banner3.jpeg';
@@ -1851,16 +1852,16 @@ export default function CustomerView({ onSwitchView, systemConfig, onOpenAuthMod
                       <span className="font-extrabold text-[11px] text-slate-800 tracking-tight text-center">Tumpang Pay</span>
                     </button>
 
-                    {/* 3. Tumpang Shop Menu (Dimmed) */}
+                    {/* 3. Tumpang Shop Menu (Active Marketplace) */}
                     <button
                       id="btn-main-menu-shop"
                       onClick={() => setHomeSubView('shop')}
                       className="flex flex-col items-center gap-2 cursor-pointer group active:scale-95 transition-all"
                     >
-                      <div className="w-14 h-14 rounded-2xl bg-[#0F82FF] flex items-center justify-center text-white shadow-sm opacity-50 saturate-75 border border-blue-300/40 group-hover:scale-105 transition-transform">
+                      <div className="w-14 h-14 rounded-2xl bg-[#0F82FF] flex items-center justify-center text-white shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform ring-2 ring-blue-500/20">
                         <ShoppingBag className="w-6 h-6 text-white" />
                       </div>
-                      <span className="font-bold text-[11px] text-slate-500 tracking-tight text-center opacity-80">Tumpang Shop</span>
+                      <span className="font-extrabold text-[11px] text-slate-800 tracking-tight text-center">Tumpang Shop</span>
                     </button>
                   </div>
                 </div>
@@ -2411,127 +2412,7 @@ export default function CustomerView({ onSwitchView, systemConfig, onOpenAuthMod
 
         {/* If we are on the Tumpang Shop view */}
         {homeSubView === 'shop' && (
-          <div className="flex flex-col gap-5 pb-24">
-            {/* Back button to return to the landing home menu */}
-            <button
-              onClick={() => setHomeSubView('main')}
-              className="flex items-center gap-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 py-2.5 px-4 rounded-xl self-start transition-all cursor-pointer active:scale-95 border border-slate-200/50 mb-1"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Kembali ke Layanan Utama</span>
-            </button>
-
-            {/* Hero Banner Tumpang Shop Carousel */}
-            <BannerCarousel altPrefix="Banner Tumpang Shop" />
-            <div className="relative bg-gradient-to-br from-blue-600 via-sky-600 to-indigo-700 text-white p-6 rounded-3xl shadow-lg shadow-blue-500/20 overflow-hidden">
-              <div className="absolute top-0 right-0 w-36 h-36 bg-white/10 rounded-full -mr-8 -mt-8 blur-md"></div>
-              <div className="absolute left-[-20px] bottom-[-20px] w-32 h-32 bg-blue-500/25 rounded-full blur-2xl"></div>
-              <div className="relative z-10 max-w-[80%]">
-                <span className="bg-white/20 text-[9px] uppercase font-black tracking-wider px-3 py-1 rounded-full border border-white/10">Tumpang Shop</span>
-                <h3 className="font-display font-black text-xl leading-tight mt-3">Segera Hadir / Coming Soon!</h3>
-                <p className="text-xs text-blue-50 mt-1.5 leading-relaxed">Belanja Sembako & Kebutuhan Harian Instan. Segera hadir layanan belanja dari pasar tradisional Tumpang, minimarket, hingga warung kelontong tetangga langsung diantar ke dapur Anda!</p>
-              </div>
-              <div className="absolute right-[-10px] bottom-[-10px] opacity-25">
-                <ShoppingBag className="w-32 h-32 rotate-12" />
-              </div>
-            </div>
-
-            {/* Main Coming Soon Card */}
-            <div className="bg-white border border-blue-100 rounded-3xl p-6 shadow-sm flex flex-col gap-5">
-              <div className="text-center pb-2 border-b border-slate-100">
-                <div className="w-16 h-16 rounded-full bg-blue-50 border-2 border-blue-500 flex items-center justify-center text-3xl mx-auto mb-3 shadow-md shadow-blue-500/10">
-                  🛒
-                </div>
-                <h4 className="font-display font-black text-base text-slate-800 uppercase tracking-tight">Tumpang Shop</h4>
-                <p className="text-[10px] text-blue-600 font-bold uppercase mt-0.5 tracking-wider">Belanja Praktis Kebutuhan Harian & Sembako</p>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="bg-blue-50/50 rounded-2xl p-4 border border-blue-100/50 flex flex-col gap-2">
-                <div className="flex justify-between items-center text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
-                  <span>Progress Peluncuran:</span>
-                  <span className="text-blue-700">95% Selesai</span>
-                </div>
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div className="bg-gradient-to-r from-blue-500 to-indigo-500 h-full rounded-full w-[95%] animate-pulse"></div>
-                </div>
-                <div className="flex justify-between text-[10px] font-medium text-slate-400 mt-0.5">
-                  <span>Tahap Integrasi Stok Warung Mitra</span>
-                  <span>Est. Peluncuran: 7 Hari Lagi</span>
-                </div>
-              </div>
-
-              {/* Highlights */}
-              <div className="flex flex-col gap-3">
-                <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kenapa Memilih Tumpang Shop?</h5>
-                
-                <div className="flex items-start gap-3 p-2.5 rounded-2xl hover:bg-blue-50/25 transition-all">
-                  <span className="text-lg bg-blue-50 p-2 rounded-xl text-blue-600">🥬</span>
-                  <div>
-                    <h6 className="text-xs font-black text-slate-800">Bahan Segar & Sembako Lengkap</h6>
-                    <p className="text-[10px] text-slate-500 leading-relaxed mt-0.5">Pilihan sayuran segar pasar, beras premium, minyak goreng, gula pasir, susu, hingga bumbu dapur lengkap.</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3 p-2.5 rounded-2xl hover:bg-blue-50/25 transition-all">
-                  <span className="text-lg bg-blue-50 p-2 rounded-xl text-blue-600">🛵</span>
-                  <div>
-                    <h6 className="text-xs font-black text-slate-800">Pengantaran Super Cepat</h6>
-                    <p className="text-[10px] text-slate-500 leading-relaxed mt-0.5">Belanjaan Anda dikemas dengan higienis dan diantar oleh kurir khusus dalam waktu kurang dari 45 menit.</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3 p-2.5 rounded-2xl hover:bg-blue-50/25 transition-all">
-                  <span className="text-lg bg-blue-50 p-2 rounded-xl text-blue-600">🪙</span>
-                  <div>
-                    <h6 className="text-xs font-black text-slate-800">Dukung UMKM & Toko Kelontong Lokal</h6>
-                    <p className="text-[10px] text-slate-500 leading-relaxed mt-0.5">Seluruh produk disediakan oleh warung-warung kelontong tradisional dan pedagang pasar asli Kecamatan Tumpang.</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Waitlist Form */}
-              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 flex flex-col gap-3">
-                {!notifyShopSubmitted ? (
-                  <>
-                    <div className="text-left">
-                      <span className="text-[10px] font-black text-blue-600 bg-blue-100/50 px-2 py-0.5 rounded-md uppercase tracking-wider">MINTA NOTIFIKASI</span>
-                      <h5 className="text-xs font-black text-slate-800 mt-1">Dapatkan Notifikasi Saat Rilis!</h5>
-                      <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">Masukkan nomor WhatsApp Anda untuk didaftarkan sebagai penerima info peluncuran Tumpang Shop.</p>
-                    </div>
-
-                    <div className="flex flex-col gap-2 mt-1">
-                      <input 
-                        type="tel"
-                        value={notifyShopPhone}
-                        onChange={(e) => setNotifyShopPhone(e.target.value)}
-                        placeholder="Masukkan Nomor WhatsApp Anda..."
-                        className="w-full bg-white border border-slate-200 rounded-xl py-2.5 px-3.5 text-xs font-semibold focus:outline-none focus:border-blue-500 transition-colors"
-                      />
-                      <button
-                        onClick={() => {
-                          if (!notifyShopPhone.trim()) {
-                            alert('Mohon masukkan Nomor WhatsApp Anda yang aktif!');
-                            return;
-                          }
-                          setNotifyShopSubmitted(true);
-                        }}
-                        className="w-full bg-[#2563EB] hover:bg-blue-700 text-white font-black py-2.5 rounded-xl text-xs uppercase tracking-wider transition-colors shadow-md shadow-blue-500/10 cursor-pointer"
-                      >
-                        Hubungi Saya Saat Rilis
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-center py-2 flex flex-col items-center gap-2 animate-in zoom-in-95 duration-200">
-                    <span className="text-2xl">🎉</span>
-                    <h5 className="text-xs font-black text-blue-700">Terima Kasih, Anda Sudah Terdaftar!</h5>
-                    <p className="text-[10px] text-slate-500 max-w-xs leading-relaxed">Nomor WhatsApp Anda ({notifyShopPhone}) berhasil terdaftar. Kami akan menginfokan kupon diskon perdana Anda begitu layanan belanja ini aktif!</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <ShopMarketplaceView onBackToMain={() => setHomeSubView('main')} />
         )}
 
         {/* If we are on the Tumpang Bike view */}
