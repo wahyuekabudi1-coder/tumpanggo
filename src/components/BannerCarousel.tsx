@@ -20,20 +20,20 @@ interface BannerSlide {
 const officialPlatformBannerSlides: BannerSlide[] = [
   { 
     id: 'official-banner-1', 
-    image: '/banner1.jpeg', 
-    fallbackUrl: '/banner1.jpeg', 
+    image: '/Desain%20tanpa%20judul%20(1).png', 
+    fallbackUrl: '/Desain%20tanpa%20judul%20(1).png', 
     title: 'Super-App Lokal Kecamatan Tumpang - TumpangGo' 
   },
   { 
     id: 'official-banner-2', 
-    image: '/banner2.jpeg', 
-    fallbackUrl: '/banner2.jpeg', 
+    image: '/Desain%20tanpa%20judul%20(2).png', 
+    fallbackUrl: '/Desain%20tanpa%20judul%20(2).png', 
     title: 'Dari Tumpang, Untuk Tumpang - Satu Aplikasi Berbagai Kebutuhan' 
   },
   { 
     id: 'official-banner-3', 
-    image: '/banner3.jpeg', 
-    fallbackUrl: '/banner3.jpeg', 
+    image: '/Desain%20tanpa%20judul%20(3).png', 
+    fallbackUrl: '/Desain%20tanpa%20judul%20(3).png', 
     title: 'Dari Tumpang, Untuk Tumpang - Ekosistem Digital Tumpang' 
   },
 ];
