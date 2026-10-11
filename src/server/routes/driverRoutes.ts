@@ -8,8 +8,8 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { foodDb } from '../db.ts';
-import { requireRole, requireDriverSelf } from '../auth.ts';
+import { foodDb } from '../db';
+import { requireRole, requireDriverSelf } from '../auth';
 
 export const driverRouter = Router();
 
@@ -32,20 +32,20 @@ driverRouter.get('/:id', requireDriverSelf('id'), (req: Request, res: Response) 
   res.json(d);
 });
 
-driverRouter.post('/', requireRole(['ADMIN']), (req: Request, res: Response) => {
+driverRouter.post('/', requireRole(['ADMIN']), async (req: Request, res: Response) => {
   const { userId, ...driverData } = req.body;
   try {
-    const created = foodDb.createDriver(req.user?.userId || userId || 'admin', driverData);
+    const created = await foodDb.createDriver(req.user?.userId || userId || 'admin', driverData);
     res.status(201).json(created);
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }
 });
 
-driverRouter.put('/:id', requireDriverSelf('id'), (req: Request, res: Response) => {
+driverRouter.put('/:id', requireDriverSelf('id'), async (req: Request, res: Response) => {
   const { userId, role, ...updates } = req.body;
   try {
-    const updated = foodDb.updateDriver(
+    const updated = await foodDb.updateDriver(
       req.user?.userId || userId || req.params.id,
       req.params.id,
       updates,
@@ -57,11 +57,15 @@ driverRouter.put('/:id', requireDriverSelf('id'), (req: Request, res: Response) 
   }
 });
 
-driverRouter.delete('/:id', requireRole(['ADMIN']), (req: Request, res: Response) => {
+driverRouter.delete('/:id', requireRole(['ADMIN']), async (req: Request, res: Response) => {
   const { userId } = req.body;
-  const success = foodDb.deleteDriver(req.user?.userId || userId || 'admin', req.params.id);
-  if (success) res.json({ success: true });
-  else res.status(404).json({ error: 'Driver not found' });
+  try {
+    const success = await foodDb.deleteDriver(req.user?.userId || userId || 'admin', req.params.id);
+    if (success) res.json({ success: true });
+    else res.status(404).json({ error: 'Driver not found' });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 driverRouter.get('/:driverId/orders', requireDriverSelf('driverId'), (req: Request, res: Response) => {

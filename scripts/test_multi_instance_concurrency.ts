@@ -6,8 +6,8 @@
  * Tests cross-process file locking and atomic state protection across separate processes.
  */
 
-import { foodDb } from '../src/server/db.ts';
-import { OrderStatus } from '../src/types.ts';
+import { foodDb } from '../src/server/db';
+import { OrderStatus } from '../src/types';
 
 async function testMultiInstance() {
   console.log('====================================================');

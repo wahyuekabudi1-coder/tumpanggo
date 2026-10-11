@@ -6,8 +6,8 @@
  * Validates fail-safe behavior when Firestore is disconnected in production mode.
  */
 
-import { validateProductionEnvironment } from '../src/server/config.ts';
-import { testFirestoreConnection } from '../src/server/firebaseAdmin.ts';
+import { validateProductionEnvironment } from '../src/server/config';
+import { testFirestoreConnection } from '../src/server/firebaseAdmin';
 
 async function runProductionSafeguardTests() {
   console.log('====================================================');

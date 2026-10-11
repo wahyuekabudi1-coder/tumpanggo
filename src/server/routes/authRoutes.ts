@@ -8,9 +8,9 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { foodDb } from '../db.ts';
-import { foodConfig } from '../config.ts';
-import { createAuthToken, verifyPassword, hashPassword, isAdminEmail } from '../auth.ts';
+import { foodDb } from '../db';
+import { foodConfig } from '../config';
+import { createAuthToken, verifyPassword, hashPassword, isAdminEmail } from '../auth';
 
 export const authRouter = Router();
 
@@ -131,7 +131,7 @@ authRouter.post('/login', (req: Request, res: Response) => {
 /**
  * POST /api/merchants/register
  */
-authRouter.post('/merchants/register', (req: Request, res: Response) => {
+authRouter.post('/merchants/register', async (req: Request, res: Response) => {
   const { name, ownerName, phone, email, category, address, description, password } = req.body;
 
   if (!name || !ownerName || !phone || !password) {
@@ -152,7 +152,7 @@ authRouter.post('/merchants/register', (req: Request, res: Response) => {
       return res.status(400).json({ error: 'No. HP/WhatsApp atau Email ini sudah terdaftar sebagai Merchant.' });
     }
 
-    const newMerchant = foodDb.createMerchant('SYSTEM_REGISTER', {
+    const newMerchant = await foodDb.createMerchant('SYSTEM_REGISTER', {
       name: String(name).trim(),
       ownerName: String(ownerName).trim(),
       phone: cleanPhone,
@@ -196,16 +196,20 @@ authRouter.post('/merchants/register', (req: Request, res: Response) => {
 /**
  * POST /api/merchants/activate
  */
-authRouter.post('/merchants/activate', (req: Request, res: Response) => {
+authRouter.post('/merchants/activate', async (req: Request, res: Response) => {
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ error: 'Email dan password wajib diisi.' });
   }
 
-  const result = foodDb.activateMerchant(email, password);
-  if (result.success) {
-    res.json({ success: true, merchant: result.merchant });
-  } else {
-    res.status(400).json({ error: result.error });
+  try {
+    const result = await foodDb.activateMerchant(email, password);
+    if (result.success) {
+      res.json({ success: true, merchant: result.merchant });
+    } else {
+      res.status(400).json({ error: result.error });
+    }
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
   }
 });

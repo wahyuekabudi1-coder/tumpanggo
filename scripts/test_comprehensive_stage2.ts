@@ -18,10 +18,10 @@
 
 import fs from 'fs';
 import path from 'path';
-import { foodDb } from '../src/server/db.ts';
-import { validateProductionEnvironment } from '../src/server/config.ts';
-import { testFirestoreConnection } from '../src/server/firebaseAdmin.ts';
-import { OrderStatus } from '../src/types.ts';
+import { foodDb } from '../src/server/db';
+import { validateProductionEnvironment } from '../src/server/config';
+import { testFirestoreConnection } from '../src/server/firebaseAdmin';
+import { OrderStatus } from '../src/types';
 
 const BASE_URL = 'http://localhost:3000';
 

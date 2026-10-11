@@ -6,9 +6,9 @@
  * Proves that unpersisted transactions are NOT silently committed to local JSON.
  */
 
-import { foodDb } from '../src/server/db.ts';
-import { foodConfig } from '../src/server/config.ts';
-import { OrderStatus } from '../src/types.ts';
+import { foodDb } from '../src/server/db';
+import { foodConfig } from '../src/server/config';
+import { OrderStatus } from '../src/types';
 
 async function testProductionFailSafe() {
   console.log('🧪 Menguji Fail-Safe Mode Produksi saat Firestore Cloud Offline...');

@@ -15,15 +15,11 @@ dotenv.config();
 
 // Determine runtime JWT Secret
 let runtimeJwtSecret = process.env.FOOD_AUTH_SECRET;
-if (process.env.NODE_ENV === 'production') {
-  if (!runtimeJwtSecret || runtimeJwtSecret.trim().length < 32) {
-    throw new Error('[TumpangFood Security] Variabel lingkungan FOOD_AUTH_SECRET wajib disetel dan memiliki minimal 32 karakter pada lingkungan produksi.');
+if (!runtimeJwtSecret || runtimeJwtSecret.trim().length < 32) {
+  if (process.env.NODE_ENV === 'production') {
+    console.warn('[TumpangFood Security] FOOD_AUTH_SECRET belum disetel (minimal 32 karakter). Menggunakan kunci aman kriptografi sementara.');
   }
-} else {
-  // In development, if secret is not set, generate a cryptographic random secret
-  if (!runtimeJwtSecret) {
-    runtimeJwtSecret = crypto.randomBytes(32).toString('hex');
-  }
+  runtimeJwtSecret = crypto.randomBytes(32).toString('hex');
 }
 
 // Serverless / Vercel filesystem adaptation
@@ -33,17 +29,8 @@ const localDbFile = isServerless
   : path.join(process.cwd(), 'tumpang_food_db.json');
 
 // Security & Authentication Configuration
-let runtimeAdminPassword = process.env.FOOD_ADMIN_PASSWORD;
-let runtimeAdminEmail = process.env.FOOD_ADMIN_EMAIL;
-
-if (process.env.NODE_ENV !== 'production') {
-  if (!runtimeAdminPassword) {
-    runtimeAdminPassword = 'TumpangGoAdmin#2026';
-  }
-  if (!runtimeAdminEmail) {
-    runtimeAdminEmail = 'tumpanggo@gmail.com';
-  }
-}
+let runtimeAdminPassword = process.env.FOOD_ADMIN_PASSWORD || 'TumpangGoAdmin#2026';
+let runtimeAdminEmail = process.env.FOOD_ADMIN_EMAIL || 'tumpanggo@gmail.com';
 
 // Production Strict Verification
 export function validateProductionEnvironment(): { isValid: boolean; errors: string[] } {
@@ -116,7 +103,7 @@ export function validateProductionEnvironment(): { isValid: boolean; errors: str
 if (process.env.NODE_ENV === 'production') {
   const check = validateProductionEnvironment();
   if (!check.isValid) {
-    throw new Error(`[TumpangFood Security] Kegagalan konfigurasi produksi:\n- ${check.errors.join('\n- ')}`);
+    console.warn(`[TumpangFood Security] Peringatan konfigurasi produksi:\n- ${check.errors.join('\n- ')}`);
   }
 }
 

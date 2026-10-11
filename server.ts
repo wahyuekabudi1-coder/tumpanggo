@@ -10,9 +10,9 @@ import path from 'path';
 import fs from 'fs';
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
-import { app } from './src/server/app.ts';
-import { foodDb } from './src/server/db.ts';
-import { foodConfig } from './src/server/config.ts';
+import { app } from './src/server/app';
+import { foodDb } from './src/server/db';
+import { foodConfig } from './src/server/config';
 
 export { app };
 

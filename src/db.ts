@@ -6,5 +6,5 @@
  * Re-exports the isolated FoodDatabase instance and models from src/server/db.ts
  */
 
-export { foodDb as dbInstance, FoodDatabase as Database } from './server/db.ts';
-export * from './types.ts';
+export { foodDb as dbInstance, FoodDatabase as Database } from './server/db';
+export * from './types';

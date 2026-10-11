@@ -11,10 +11,10 @@ import path from 'path';
 import {
   Merchant, Category, MenuItem, Order, Driver, Settlement, AuditLog, SystemConfig,
   OrderStatus, SettlementStatus, AssignmentMode, PartnerRegistration, LicenseKey
-} from '../types.ts';
-import { foodConfig } from './config.ts';
-import { hashPassword, verifyPassword } from './auth.ts';
-import { OrderService } from './services/orderService.ts';
+} from '../types';
+import { foodConfig } from './config';
+import { hashPassword, verifyPassword } from './auth';
+import { OrderService } from './services/orderService';
 import {
   getAdminDb,
   safeAdminSetDoc,
@@ -26,7 +26,7 @@ import {
   isFirestoreAdminConfigured,
   isUsingServiceAccount,
   testFirestoreConnection
-} from './firebaseAdmin.ts';
+} from './firebaseAdmin';
 
 const FOOD_DB_FILE = foodConfig.localDbFile;
 const LEGACY_DB_FILE = foodConfig.legacyDbFile;
@@ -217,7 +217,13 @@ export class FoodDatabase {
     if (!this.initPromise) {
       this.initPromise = this.init();
     }
-    return this.initPromise;
+    try {
+      await this.initPromise;
+    } catch (err) {
+      this.initPromise = null;
+      this.isInitialized = false;
+      throw err;
+    }
   }
 
   /**
@@ -263,12 +269,24 @@ export class FoodDatabase {
    */
   public async init() {
     if (this.isInitialized) return;
-    this.isInitialized = true;
 
     if (!isFirestoreAdminConfigured()) {
+      if (foodConfig.isProduction) {
+        throw new Error('[Produksi] Firebase Admin SDK tidak terkonfigurasi. Operasi database ditolak demi integritas data.');
+      }
       console.warn('[TumpangFood DB] Firestore Admin SDK not configured, operating with persistent local storage.');
+      this.isInitialized = true;
       return;
     }
+
+    if (foodConfig.isProduction) {
+      const probe = await testFirestoreConnection();
+      if (!probe.connected) {
+        throw new Error(`[Produksi] Koneksi ke database Firestore "${foodConfig.databaseId}" pada proyek "${probe.projectId}" gagal (${probe.error}). Fallback ke JSON lokal dinonaktifkan pada lingkungan produksi.`);
+      }
+    }
+
+    this.isInitialized = true;
 
     try {
       console.log('[TumpangFood DB] Syncing with Firestore database via Admin SDK:', foodConfig.databaseId);
@@ -499,12 +517,22 @@ export class FoodDatabase {
     return this.data.systemConfig;
   }
 
-  public updateConfig(userId: string, updates: Partial<SystemConfig>): SystemConfig {
+  public async updateConfig(userId: string, updates: Partial<SystemConfig>): Promise<SystemConfig> {
+    const prevConfig = { ...this.data.systemConfig };
     this.data.systemConfig = { ...this.data.systemConfig, ...updates };
     this.save();
     this.log(userId, `Updated system configuration`, 'ADMIN');
 
-    safeFirestoreSetDoc('systemConfig', 'config_1', this.data.systemConfig);
+    if (foodConfig.isProduction) {
+      const persisted = await safeFirestoreSetDoc('systemConfig', 'config_1', this.data.systemConfig);
+      if (!persisted) {
+        this.data.systemConfig = prevConfig;
+        this.save();
+        throw new Error('[Produksi] Gagal menyimpan konfigurasi sistem ke cloud Firestore. Perubahan dibatalkan demi integritas data.');
+      }
+    } else {
+      safeFirestoreSetDoc('systemConfig', 'config_1', this.data.systemConfig);
+    }
     return this.data.systemConfig;
   }
 
@@ -535,7 +563,7 @@ export class FoodDatabase {
     });
   }
 
-  public createMerchant(userId: string, merchantData: Omit<Merchant, 'id' | 'createdAt' | 'updatedAt' | 'rating'>): Merchant {
+  public async createMerchant(userId: string, merchantData: Omit<Merchant, 'id' | 'createdAt' | 'updatedAt' | 'rating'>): Promise<Merchant> {
     const newMerchant: Merchant = {
       ...merchantData,
       id: 'm_' + Math.random().toString(36).substring(2, 9),
@@ -547,64 +575,97 @@ export class FoodDatabase {
       newMerchant.password = hashPassword(newMerchant.password);
     }
 
+    if (foodConfig.isProduction) {
+      const persisted = await safeFirestoreSetDoc('merchants', newMerchant.id, newMerchant);
+      if (!persisted) {
+        throw new Error('[Produksi] Gagal menyimpan merchant ke cloud Firestore. Transaksi dibatalkan demi menjaga integritas data.');
+      }
+    } else {
+      safeFirestoreSetDoc('merchants', newMerchant.id, newMerchant);
+    }
+
     this.data.merchants.push(newMerchant);
     this.save();
     this.log(userId, `Created merchant ${newMerchant.name}`, 'ADMIN');
-
-    safeFirestoreSetDoc('merchants', newMerchant.id, newMerchant);
     return newMerchant;
   }
 
-  public updateMerchant(userId: string, id: string, updates: Partial<Merchant>, role: 'ADMIN' | 'MERCHANT' = 'MERCHANT'): Merchant {
+  public async updateMerchant(userId: string, id: string, updates: Partial<Merchant>, role: 'ADMIN' | 'MERCHANT' = 'MERCHANT'): Promise<Merchant> {
     const index = this.data.merchants.findIndex(m => m.id === id);
     if (index === -1) throw new Error('Merchant not found');
 
+    const prevMerchant = { ...this.data.merchants[index] };
     const updatedData = { ...updates };
     if (updatedData.password && !updatedData.password.startsWith('pbkdf2$')) {
       updatedData.password = hashPassword(updatedData.password);
     }
 
-    this.data.merchants[index] = {
+    const nextMerchant = {
       ...this.data.merchants[index],
       ...updatedData,
       updatedAt: new Date().toISOString()
     };
+
+    if (foodConfig.isProduction) {
+      const persisted = await safeFirestoreSetDoc('merchants', id, nextMerchant);
+      if (!persisted) {
+        throw new Error('[Produksi] Gagal memperbarui merchant pada cloud Firestore. Perubahan dibatalkan demi integritas data.');
+      }
+    } else {
+      safeFirestoreSetDoc('merchants', id, nextMerchant);
+    }
+
+    this.data.merchants[index] = nextMerchant;
     this.save();
     this.log(userId, `Updated merchant ${this.data.merchants[index].name}`, role);
-
-    safeFirestoreSetDoc('merchants', id, this.data.merchants[index]);
     return this.data.merchants[index];
   }
 
-  public deleteMerchant(userId: string, id: string): boolean {
+  public async deleteMerchant(userId: string, id: string): Promise<boolean> {
     const index = this.data.merchants.findIndex(m => m.id === id);
     if (index === -1) return false;
 
+    if (foodConfig.isProduction) {
+      const deleted = await safeAdminDeleteDoc('merchants', id);
+      if (!deleted) {
+        throw new Error('[Produksi] Gagal menghapus merchant pada cloud Firestore. Operasi dibatalkan demi integritas data.');
+      }
+    } else {
+      safeAdminDeleteDoc('merchants', id);
+    }
+
     const name = this.data.merchants[index].name;
     this.data.merchants.splice(index, 1);
-
-    // Clean menu items and categories
     this.data.categories = this.data.categories.filter(c => c.merchantId !== id);
     this.data.menuItems = this.data.menuItems.filter(i => i.merchantId !== id);
 
     this.save();
     this.log(userId, `Deleted merchant ${name}`, 'ADMIN');
-
-    safeAdminDeleteDoc('merchants', id);
     return true;
   }
 
-  public activateMerchant(email: string, passwordPlain: string): { success: boolean; merchant?: Merchant; error?: string } {
+  public async activateMerchant(email: string, passwordPlain: string): Promise<{ success: boolean; merchant?: Merchant; error?: string }> {
     const cleanEmail = email.trim().toLowerCase();
     const merchant = this.data.merchants.find(m => m.email?.trim().toLowerCase() === cleanEmail);
     if (!merchant) {
       return { success: false, error: 'Merchant dengan email tersebut tidak ditemukan.' };
     }
 
+    const prevMerchant = { ...merchant };
     merchant.active = true;
     merchant.isActivated = true;
     merchant.password = hashPassword(passwordPlain);
     merchant.updatedAt = new Date().toISOString();
+
+    if (foodConfig.isProduction) {
+      const persisted = await safeFirestoreSetDoc('merchants', merchant.id, merchant);
+      if (!persisted) {
+        Object.assign(merchant, prevMerchant);
+        throw new Error('[Produksi] Gagal mengaktifkan merchant pada cloud Firestore. Operasi dibatalkan.');
+      }
+    } else {
+      safeFirestoreSetDoc('merchants', merchant.id, merchant);
+    }
 
     if (this.data.partnerRegistrations) {
       const reg = this.data.partnerRegistrations.find(r => r.email?.trim().toLowerCase() === cleanEmail && r.type === 'MERCHANT');
@@ -616,8 +677,6 @@ export class FoodDatabase {
 
     this.save();
     this.log(merchant.id, `Activated merchant store ${merchant.name}`, 'MERCHANT');
-
-    safeFirestoreSetDoc('merchants', merchant.id, merchant);
     return { success: true, merchant };
   }
 
@@ -628,7 +687,7 @@ export class FoodDatabase {
       .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
   }
 
-  public createCategory(merchantId: string, name: string): Category {
+  public async createCategory(merchantId: string, name: string): Promise<Category> {
     const existing = this.getCategories(merchantId);
     const orderIndex = existing.length > 0 ? Math.max(...existing.map(e => e.orderIndex)) + 1 : 1;
     const newCat: Category = {
@@ -637,32 +696,58 @@ export class FoodDatabase {
       name: name.trim(),
       orderIndex
     };
+
+    if (foodConfig.isProduction) {
+      const persisted = await safeFirestoreSetDoc('categories', newCat.id, newCat);
+      if (!persisted) {
+        throw new Error('[Produksi] Gagal menyimpan kategori menu ke cloud Firestore. Operasi dibatalkan.');
+      }
+    } else {
+      safeFirestoreSetDoc('categories', newCat.id, newCat);
+    }
+
     this.data.categories.push(newCat);
     this.save();
     this.log(merchantId, `Created category ${name}`, 'MERCHANT');
-
-    safeFirestoreSetDoc('categories', newCat.id, newCat);
     return newCat;
   }
 
-  public updateCategory(merchantId: string, id: string, name: string): Category {
+  public async updateCategory(merchantId: string, id: string, name: string): Promise<Category> {
     const cat = this.data.categories.find(c => c.id === id && c.merchantId === merchantId);
     if (!cat) throw new Error('Category not found');
+    const prevName = cat.name;
     cat.name = name.trim();
-    this.save();
 
-    safeFirestoreSetDoc('categories', id, cat);
+    if (foodConfig.isProduction) {
+      const persisted = await safeFirestoreSetDoc('categories', id, cat);
+      if (!persisted) {
+        cat.name = prevName;
+        throw new Error('[Produksi] Gagal memperbarui kategori menu di cloud Firestore. Operasi dibatalkan.');
+      }
+    } else {
+      safeFirestoreSetDoc('categories', id, cat);
+    }
+
+    this.save();
     return cat;
   }
 
-  public deleteCategory(merchantId: string, id: string): boolean {
+  public async deleteCategory(merchantId: string, id: string): Promise<boolean> {
     const index = this.data.categories.findIndex(c => c.id === id && c.merchantId === merchantId);
     if (index === -1) return false;
+
+    if (foodConfig.isProduction) {
+      const deleted = await safeAdminDeleteDoc('categories', id);
+      if (!deleted) {
+        throw new Error('[Produksi] Gagal menghapus kategori menu pada cloud Firestore. Operasi dibatalkan.');
+      }
+    } else {
+      safeAdminDeleteDoc('categories', id);
+    }
+
     this.data.categories.splice(index, 1);
     this.data.menuItems = this.data.menuItems.filter(i => i.categoryId !== id);
     this.save();
-
-    safeAdminDeleteDoc('categories', id);
     return true;
   }
 
@@ -675,7 +760,7 @@ export class FoodDatabase {
     return this.data.menuItems.find(i => i.id === id);
   }
 
-  public createMenuItem(merchantId: string, itemData: Omit<MenuItem, 'id' | 'merchantId' | 'createdAt' | 'updatedAt'>): MenuItem {
+  public async createMenuItem(merchantId: string, itemData: Omit<MenuItem, 'id' | 'merchantId' | 'createdAt' | 'updatedAt'>): Promise<MenuItem> {
     const newItem: MenuItem = {
       ...itemData,
       id: 'item_' + Math.random().toString(36).substring(2, 9),
@@ -683,39 +768,65 @@ export class FoodDatabase {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
+
+    if (foodConfig.isProduction) {
+      const persisted = await safeFirestoreSetDoc('menuItems', newItem.id, newItem);
+      if (!persisted) {
+        throw new Error('[Produksi] Gagal menyimpan item menu ke cloud Firestore. Operasi dibatalkan.');
+      }
+    } else {
+      safeFirestoreSetDoc('menuItems', newItem.id, newItem);
+    }
+
     this.data.menuItems.push(newItem);
     this.save();
     this.log(merchantId, `Created menu item ${newItem.name}`, 'MERCHANT');
-
-    safeFirestoreSetDoc('menuItems', newItem.id, newItem);
     return newItem;
   }
 
-  public updateMenuItem(merchantId: string, id: string, updates: Partial<MenuItem>): MenuItem {
+  public async updateMenuItem(merchantId: string, id: string, updates: Partial<MenuItem>): Promise<MenuItem> {
     const index = this.data.menuItems.findIndex(i => i.id === id && i.merchantId === merchantId);
     if (index === -1) throw new Error('Menu item not found');
 
-    this.data.menuItems[index] = {
+    const prevItem = { ...this.data.menuItems[index] };
+    const nextItem = {
       ...this.data.menuItems[index],
       ...updates,
       updatedAt: new Date().toISOString()
     };
+
+    if (foodConfig.isProduction) {
+      const persisted = await safeFirestoreSetDoc('menuItems', id, nextItem);
+      if (!persisted) {
+        throw new Error('[Produksi] Gagal memperbarui item menu pada cloud Firestore. Operasi dibatalkan.');
+      }
+    } else {
+      safeFirestoreSetDoc('menuItems', id, nextItem);
+    }
+
+    this.data.menuItems[index] = nextItem;
     this.save();
     this.log(merchantId, `Updated menu item ${this.data.menuItems[index].name}`, 'MERCHANT');
-
-    safeFirestoreSetDoc('menuItems', id, this.data.menuItems[index]);
     return this.data.menuItems[index];
   }
 
-  public deleteMenuItem(merchantId: string, id: string): boolean {
+  public async deleteMenuItem(merchantId: string, id: string): Promise<boolean> {
     const index = this.data.menuItems.findIndex(i => i.id === id && i.merchantId === merchantId);
     if (index === -1) return false;
+
+    if (foodConfig.isProduction) {
+      const deleted = await safeAdminDeleteDoc('menuItems', id);
+      if (!deleted) {
+        throw new Error('[Produksi] Gagal menghapus item menu pada cloud Firestore. Operasi dibatalkan.');
+      }
+    } else {
+      safeAdminDeleteDoc('menuItems', id);
+    }
+
     const name = this.data.menuItems[index].name;
     this.data.menuItems.splice(index, 1);
     this.save();
     this.log(merchantId, `Deleted menu item ${name}`, 'MERCHANT');
-
-    safeAdminDeleteDoc('menuItems', id);
     return true;
   }
 
@@ -746,46 +857,72 @@ export class FoodDatabase {
     });
   }
 
-  public createDriver(userId: string, driverData: Omit<Driver, 'id' | 'createdAt' | 'updatedAt'>): Driver {
+  public async createDriver(userId: string, driverData: Omit<Driver, 'id' | 'createdAt' | 'updatedAt'>): Promise<Driver> {
     const newDriver: Driver = {
       ...driverData,
       id: 'd_' + Math.random().toString(36).substring(2, 9),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
+
+    if (foodConfig.isProduction) {
+      const persisted = await safeFirestoreSetDoc('drivers', newDriver.id, newDriver);
+      if (!persisted) {
+        throw new Error('[Produksi] Gagal menyimpan driver ke cloud Firestore. Transaksi dibatalkan.');
+      }
+    } else {
+      safeFirestoreSetDoc('drivers', newDriver.id, newDriver);
+    }
+
     this.data.drivers.push(newDriver);
     this.save();
     this.log(userId, `Created driver ${newDriver.name}`, 'ADMIN');
-
-    safeFirestoreSetDoc('drivers', newDriver.id, newDriver);
     return newDriver;
   }
 
-  public updateDriver(userId: string, id: string, updates: Partial<Driver>, role: 'ADMIN' | 'DRIVER' = 'DRIVER'): Driver {
+  public async updateDriver(userId: string, id: string, updates: Partial<Driver>, role: 'ADMIN' | 'DRIVER' = 'DRIVER'): Promise<Driver> {
     const index = this.data.drivers.findIndex(d => d.id === id);
     if (index === -1) throw new Error('Driver not found');
 
-    this.data.drivers[index] = {
+    const prevDriver = { ...this.data.drivers[index] };
+    const nextDriver = {
       ...this.data.drivers[index],
       ...updates,
       updatedAt: new Date().toISOString()
     };
+
+    if (foodConfig.isProduction) {
+      const persisted = await safeFirestoreSetDoc('drivers', id, nextDriver);
+      if (!persisted) {
+        throw new Error('[Produksi] Gagal memperbarui driver pada cloud Firestore. Perubahan dibatalkan.');
+      }
+    } else {
+      safeFirestoreSetDoc('drivers', id, nextDriver);
+    }
+
+    this.data.drivers[index] = nextDriver;
     this.save();
     this.log(userId, `Updated driver ${this.data.drivers[index].name}`, role);
-
-    safeFirestoreSetDoc('drivers', id, this.data.drivers[index]);
     return this.data.drivers[index];
   }
 
-  public deleteDriver(userId: string, id: string): boolean {
+  public async deleteDriver(userId: string, id: string): Promise<boolean> {
     const index = this.data.drivers.findIndex(d => d.id === id);
     if (index === -1) return false;
+
+    if (foodConfig.isProduction) {
+      const deleted = await safeAdminDeleteDoc('drivers', id);
+      if (!deleted) {
+        throw new Error('[Produksi] Gagal menghapus driver pada cloud Firestore. Operasi dibatalkan.');
+      }
+    } else {
+      safeAdminDeleteDoc('drivers', id);
+    }
+
     const name = this.data.drivers[index].name;
     this.data.drivers.splice(index, 1);
     this.save();
     this.log(userId, `Deleted driver ${name}`, 'ADMIN');
-
-    safeAdminDeleteDoc('drivers', id);
     return true;
   }
 
@@ -1158,24 +1295,33 @@ export class FoodDatabase {
     });
   }
 
-  public updateSettlement(userId: string, id: string, updates: Partial<Settlement>): Settlement {
+  public async updateSettlement(userId: string, id: string, updates: Partial<Settlement>): Promise<Settlement> {
     const index = this.data.settlements.findIndex(s => s.id === id);
     if (index === -1) throw new Error('Settlement not found');
 
-    this.data.settlements[index] = {
+    const nextSettlement = {
       ...this.data.settlements[index],
       ...updates,
       paidAt: updates.status === SettlementStatus.SETTLEMENT_COMPLETED ? new Date().toISOString() : this.data.settlements[index].paidAt
     };
+
+    if (foodConfig.isProduction) {
+      const persisted = await safeFirestoreSetDoc('settlements', id, nextSettlement);
+      if (!persisted) {
+        throw new Error('[Produksi] Gagal memperbarui settlement di cloud Firestore. Perubahan dibatalkan.');
+      }
+    } else {
+      safeFirestoreSetDoc('settlements', id, nextSettlement);
+    }
+
+    this.data.settlements[index] = nextSettlement;
     this.save();
     this.createBackup();
     this.log(userId, `Updated settlement ${id} to status ${this.data.settlements[index].status}`, 'ADMIN');
-
-    safeFirestoreSetDoc('settlements', id, this.data.settlements[index]);
     return this.data.settlements[index];
   }
 
-  public confirmSettlement(userId: string, id: string): Settlement {
+  public async confirmSettlement(userId: string, id: string): Promise<Settlement> {
     return this.updateSettlement(userId, id, { status: SettlementStatus.SETTLEMENT_COMPLETED });
   }
 
@@ -1285,33 +1431,42 @@ export class FoodDatabase {
     return this.data.partnerRegistrations;
   }
 
-  public createPartnerRegistration(regData: Omit<PartnerRegistration, 'id' | 'status' | 'createdAt'>): PartnerRegistration {
+  public async createPartnerRegistration(regData: Omit<PartnerRegistration, 'id' | 'status' | 'createdAt'>): Promise<PartnerRegistration> {
     const newReg: PartnerRegistration = {
       ...regData,
       id: 'reg_' + Math.random().toString(36).substring(2, 9),
       status: 'PENDING',
       createdAt: new Date().toISOString()
     };
+
+    if (foodConfig.isProduction) {
+      const persisted = await safeFirestoreSetDoc('partnerRegistrations', newReg.id, newReg);
+      if (!persisted) {
+        throw new Error('[Produksi] Gagal menyimpan pendaftaran mitra ke cloud Firestore. Transaksi dibatalkan.');
+      }
+    } else {
+      safeFirestoreSetDoc('partnerRegistrations', newReg.id, newReg);
+    }
+
     this.data.partnerRegistrations.push(newReg);
     this.save();
     this.log('CUSTOMER', `Submitted partner registration for ${newReg.name} (${newReg.type})`, 'CUSTOMER');
-
-    safeFirestoreSetDoc('partnerRegistrations', newReg.id, newReg);
     return newReg;
   }
 
-  public approvePartnerRegistration(userId: string, id: string): { success: boolean; error?: string; registration?: PartnerRegistration } {
+  public async approvePartnerRegistration(userId: string, id: string): Promise<{ success: boolean; error?: string; registration?: PartnerRegistration }> {
     const reg = this.data.partnerRegistrations.find(r => r.id === id);
     if (!reg) return { success: false, error: 'Registration not found' };
     if (reg.status !== 'PENDING') return { success: false, error: 'Registration already processed' };
 
+    const prevStatus = reg.status;
     reg.status = 'APPROVED';
 
     if (reg.type === 'MERCHANT') {
       const generatedPassword = 'TF-' + Math.floor(1000 + Math.random() * 9000);
       reg.password = generatedPassword;
 
-      const newMerchant = this.createMerchant(userId, {
+      const newMerchant = await this.createMerchant(userId, {
         name: reg.storeName || (reg.name + ' Store'),
         ownerName: reg.name,
         phone: reg.phone,
@@ -1339,8 +1494,8 @@ export class FoodDatabase {
       reg.storeId = newMerchant.id;
 
       // Add default category and item
-      const defaultCategory = this.createCategory(newMerchant.id, 'Menu Utama');
-      this.createMenuItem(newMerchant.id, {
+      const defaultCategory = await this.createCategory(newMerchant.id, 'Menu Utama');
+      await this.createMenuItem(newMerchant.id, {
         categoryId: defaultCategory.id,
         name: 'Nasi Goreng Spesial (Contoh)',
         description: 'Nasi goreng lezat dengan bumbu khas, telur, dan kerupuk.',
@@ -1349,7 +1504,7 @@ export class FoodDatabase {
         image: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=400&auto=format&fit=crop&q=60&ixlib=rb-4.0.3'
       });
     } else if (reg.type === 'DRIVER') {
-      this.createDriver(userId, {
+      await this.createDriver(userId, {
         name: reg.name,
         phone: reg.phone,
         email: reg.email,
@@ -1360,21 +1515,39 @@ export class FoodDatabase {
       });
     }
 
+    if (foodConfig.isProduction) {
+      const persisted = await safeFirestoreSetDoc('partnerRegistrations', reg.id, reg);
+      if (!persisted) {
+        reg.status = prevStatus;
+        throw new Error('[Produksi] Gagal memperbarui status registrasi mitra ke cloud Firestore.');
+      }
+    } else {
+      safeFirestoreSetDoc('partnerRegistrations', reg.id, reg);
+    }
+
     this.save();
     this.log(userId, `Approved partner registration ${reg.id} (${reg.name})`, 'ADMIN');
-
-    safeFirestoreSetDoc('partnerRegistrations', reg.id, reg);
     return { success: true, registration: reg };
   }
 
-  public rejectPartnerRegistration(userId: string, id: string): boolean {
+  public async rejectPartnerRegistration(userId: string, id: string): Promise<boolean> {
     const reg = this.data.partnerRegistrations.find(r => r.id === id);
     if (!reg) return false;
+    const prevStatus = reg.status;
     reg.status = 'REJECTED';
+
+    if (foodConfig.isProduction) {
+      const persisted = await safeFirestoreSetDoc('partnerRegistrations', reg.id, reg);
+      if (!persisted) {
+        reg.status = prevStatus;
+        throw new Error('[Produksi] Gagal menolak pendaftaran mitra pada cloud Firestore.');
+      }
+    } else {
+      safeFirestoreSetDoc('partnerRegistrations', reg.id, reg);
+    }
+
     this.save();
     this.log(userId, `Rejected partner registration ${reg.id} (${reg.name})`, 'ADMIN');
-
-    safeFirestoreSetDoc('partnerRegistrations', reg.id, reg);
     return true;
   }
 
@@ -1383,7 +1556,7 @@ export class FoodDatabase {
     return this.data.licenses;
   }
 
-  public createLicense(userId: string, key: string, durationDays: number): LicenseKey {
+  public async createLicense(userId: string, key: string, durationDays: number): Promise<LicenseKey> {
     const cleanKey = key.trim().toUpperCase();
     if (this.data.licenses.some(l => l.key === cleanKey)) {
       throw new Error('Kode lisensi sudah terdaftar');
@@ -1394,11 +1567,19 @@ export class FoodDatabase {
       status: 'UNUSED',
       createdAt: new Date().toISOString()
     };
+
+    if (foodConfig.isProduction) {
+      const persisted = await safeFirestoreSetDoc('licenses', cleanKey, newLicense);
+      if (!persisted) {
+        throw new Error('[Produksi] Gagal menyimpan lisensi ke cloud Firestore. Transaksi dibatalkan.');
+      }
+    } else {
+      safeFirestoreSetDoc('licenses', cleanKey, newLicense);
+    }
+
     this.data.licenses.unshift(newLicense);
     this.save();
     this.log(userId, `Created license key ${cleanKey} for ${durationDays} days`, 'ADMIN');
-
-    safeFirestoreSetDoc('licenses', cleanKey, newLicense);
     return newLicense;
   }
 

@@ -9,9 +9,10 @@
 
 import fs from 'fs';
 import path from 'path';
-import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
-import { getFirestore, Firestore, Transaction } from 'firebase-admin/firestore';
-import { foodConfig } from './config.ts';
+import * as admin from 'firebase-admin';
+import { initializeApp, getApps, cert, type App } from 'firebase-admin/app';
+import { getFirestore, type Firestore, type Transaction } from 'firebase-admin/firestore';
+import { foodConfig } from './config';
 
 let adminApp: App | null = null;
 let adminDb: Firestore | null = null;
@@ -65,6 +66,10 @@ export function initFirebaseAdmin(serviceAccountOverride?: string): { success: b
     isConfiguredWithServiceAccount = false;
     activeClientEmailMasked = null;
 
+    const certFn = cert || (admin as any).cert || (admin as any).credential?.cert;
+    const initAppFn = initializeApp || (admin as any).initializeApp;
+    const getAppsFn = getApps || (admin as any).getApps;
+
     if (rawInput.length > 0) {
       try {
         let cleanRaw = rawInput;
@@ -97,7 +102,9 @@ export function initFirebaseAdmin(serviceAccountOverride?: string): { success: b
             activeProjectId = parsed.project_id;
           }
 
-          credentialOption = cert(parsed);
+          if (typeof certFn === 'function') {
+            credentialOption = certFn(parsed);
+          }
           isConfiguredWithServiceAccount = true;
 
           // Safe masked client email for diagnostics without leaking private keys
@@ -126,7 +133,9 @@ export function initFirebaseAdmin(serviceAccountOverride?: string): { success: b
         if (parsed.private_key && typeof parsed.private_key === 'string') {
           parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
         }
-        credentialOption = cert(parsed);
+        if (typeof certFn === 'function') {
+          credentialOption = certFn(parsed);
+        }
         if (parsed.project_id) {
           projectId = parsed.project_id;
           activeProjectId = parsed.project_id;
@@ -139,18 +148,25 @@ export function initFirebaseAdmin(serviceAccountOverride?: string): { success: b
       }
     }
 
-    if (getApps().length === 0) {
+    const currentApps = typeof getAppsFn === 'function' ? getAppsFn() : [];
+    if (currentApps.length === 0) {
       const initOptions: any = { projectId };
       if (credentialOption) {
         initOptions.credential = credentialOption;
       }
-      adminApp = initializeApp(initOptions);
+      if (typeof initAppFn === 'function') {
+        adminApp = initAppFn(initOptions);
+      }
     } else {
-      adminApp = getApps()[0];
+      adminApp = currentApps[0];
     }
 
     // Initialize Firestore targeting the dedicated isolated database ID
-    adminDb = getFirestore(adminApp, foodConfig.databaseId);
+    const getFirestoreFn = getFirestore || (admin as any).firestore;
+    if (typeof getFirestoreFn === 'function' && adminApp) {
+      adminDb = getFirestoreFn(adminApp, foodConfig.databaseId);
+    }
+
     console.log(`[TumpangFood Admin] Firebase Admin SDK initialized for database "${foodConfig.databaseId}" on project "${projectId}".`);
     return { success: true };
   } catch (e: any) {

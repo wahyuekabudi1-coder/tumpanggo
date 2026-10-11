@@ -6,7 +6,7 @@
  * Enforces price recalculations, menu availability checks, and order state machine rules.
  */
 
-import { Order, OrderItem, OrderStatus, MenuItem, Merchant, SystemConfig, calculateTieredServiceFee, AssignmentMode } from '../../types.ts';
+import { Order, OrderItem, OrderStatus, MenuItem, Merchant, SystemConfig, calculateTieredServiceFee, AssignmentMode } from '../../types';
 
 export interface CreateOrderInput {
   customerName: string;

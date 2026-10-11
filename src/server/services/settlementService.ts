@@ -6,7 +6,7 @@
  * Manages disbursement batching, commission deduction, and payout confirmation.
  */
 
-import { Order, OrderStatus, Settlement, SettlementStatus, Merchant } from '../../types.ts';
+import { Order, OrderStatus, Settlement, SettlementStatus, Merchant } from '../../types';
 
 export class SettlementService {
   /**

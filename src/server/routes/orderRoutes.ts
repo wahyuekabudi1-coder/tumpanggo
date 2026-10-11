@@ -8,9 +8,9 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { foodDb } from '../db.ts';
-import { OrderStatus } from '../../types.ts';
-import { requireRole } from '../auth.ts';
+import { foodDb } from '../db';
+import { OrderStatus } from '../../types';
+import { requireRole } from '../auth';
 
 export const orderRouter = Router();
 

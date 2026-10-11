@@ -8,7 +8,7 @@
 
 import crypto from 'crypto';
 import { Request, Response, NextFunction } from 'express';
-import { foodConfig } from './config.ts';
+import { foodConfig } from './config';
 
 export interface AuthUser {
   userId: string;

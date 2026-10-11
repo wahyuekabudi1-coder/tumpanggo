@@ -7,15 +7,15 @@
  */
 
 import express from 'express';
-import { foodDb } from './db.ts';
-import { foodConfig } from './config.ts';
-import { isFirestoreAdminConfigured, isUsingServiceAccount, testFirestoreConnection } from './firebaseAdmin.ts';
-import { authenticateToken } from './auth.ts';
-import { authRouter } from './routes/authRoutes.ts';
-import { merchantRouter } from './routes/merchantRoutes.ts';
-import { driverRouter } from './routes/driverRoutes.ts';
-import { orderRouter } from './routes/orderRoutes.ts';
-import { adminRouter } from './routes/adminRoutes.ts';
+import { foodDb } from './db';
+import { foodConfig } from './config';
+import { isFirestoreAdminConfigured, isUsingServiceAccount, testFirestoreConnection } from './firebaseAdmin';
+import { authenticateToken } from './auth';
+import { authRouter } from './routes/authRoutes';
+import { merchantRouter } from './routes/merchantRoutes';
+import { driverRouter } from './routes/driverRoutes';
+import { orderRouter } from './routes/orderRoutes';
+import { adminRouter } from './routes/adminRoutes';
 
 export const app = express();
 
@@ -27,8 +27,13 @@ app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 app.use(async (req, res, next) => {
   try {
     await foodDb.ensureInitialized();
-  } catch {
-    // Continue with resilient local snapshot
+  } catch (err: any) {
+    if (foodConfig.isProduction && req.path.startsWith('/api') && !req.path.startsWith('/api/health')) {
+      return res.status(503).json({
+        error: '[Produksi] Firestore Cloud tidak terhubung atau mengalami kegagalan otentikasi. Mode produksi menolak fallback ke data JSON lokal demi menjaga integritas data.',
+        detail: err.message
+      });
+    }
   }
   next();
 });
