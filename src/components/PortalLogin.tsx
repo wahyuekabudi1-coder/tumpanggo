@@ -18,7 +18,7 @@ interface PortalLoginProps {
 
 export default function PortalLogin({ role, targetMerchantId, targetDriverId, initialTab, onSuccess, onCancel, onRegisterRedirect }: PortalLoginProps) {
   const [activeTab, setActiveTab] = useState<'login' | 'register'>(initialTab || (role === 'MERCHANT' ? 'login' : 'login'));
-  const [emailInput, setEmailInput] = useState(role === 'ADMIN' ? 'tumpanggo@gmail.com' : '');
+  const [emailInput, setEmailInput] = useState('');
   const [merchants, setMerchants] = useState<Merchant[]>([]);
   const [targetMerchant, setTargetMerchant] = useState<Merchant | null>(null);
   
@@ -47,7 +47,7 @@ export default function PortalLogin({ role, targetMerchantId, targetDriverId, in
   const [confirmPassword, setConfirmPassword] = useState('');
 
   // Password login input state
-  const [passwordInput, setPasswordInput] = useState(role === 'ADMIN' ? 'admin' : '');
+  const [passwordInput, setPasswordInput] = useState('');
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -404,55 +404,6 @@ export default function PortalLogin({ role, targetMerchantId, targetDriverId, in
           ) : (
             /* Email / Phone + Kata Sandi Form - Uniform Layout */
             <form onSubmit={handlePasswordLogin} className="flex flex-col gap-4 animate-fadeIn">
-              {role === 'ADMIN' && (
-                <div className="bg-emerald-50 border border-emerald-200/80 rounded-2xl p-3.5 flex flex-col gap-2">
-                  <div className="flex items-center gap-1.5 text-emerald-800 text-xs font-bold">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                    <span>Demo Mode — Akses Cepat Admin</span>
-                  </div>
-                  <p className="text-[11px] text-emerald-700 leading-relaxed">
-                    Klik tombol di bawah untuk langsung masuk ke Dashboard Admin tanpa perlu mengetik email & password:
-                  </p>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      setLoading(true);
-                      try {
-                        const res = await fetch('/api/login', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            username: 'tumpanggo@gmail.com',
-                            password: 'admin',
-                            role: 'ADMIN'
-                          })
-                        });
-                        const data = await res.json();
-                        if (res.ok && data.token) {
-                          const userEmail = 'tumpanggo@gmail.com';
-                          localStorage.setItem('tumpang_auth_email', userEmail);
-                          localStorage.setItem('tumpang_auth_token', data.token);
-                          setSuccessMsg('Login Administrator Berhasil! Mengalihkan...');
-                          setTimeout(() => {
-                            onSuccess(userEmail, 'admin');
-                          }, 300);
-                        } else {
-                          setError(data.error || 'Gagal login administrator.');
-                        }
-                      } catch {
-                        setError('Gagal terhubung ke server.');
-                      } finally {
-                        setLoading(false);
-                      }
-                    }}
-                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-extrabold rounded-xl transition-all shadow-sm text-xs flex items-center justify-center gap-2 cursor-pointer active:scale-95"
-                  >
-                    <span>⚡ MASUK LANGSUNG DASHBOARD ADMIN</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
-
               <div>
                 <label 
                   className={`text-[11px] font-bold uppercase tracking-wider block mb-1.5 ${error ? 'text-red-600 font-extrabold' : 'text-slate-700'}`}

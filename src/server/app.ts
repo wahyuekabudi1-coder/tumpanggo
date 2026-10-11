@@ -8,6 +8,8 @@
 
 import express from 'express';
 import { foodDb } from './db.ts';
+import { foodConfig } from './config.ts';
+import { isFirestoreAdminConfigured, isUsingServiceAccount } from './firebaseAdmin.ts';
 import { authenticateToken } from './auth.ts';
 import { authRouter } from './routes/authRoutes.ts';
 import { merchantRouter } from './routes/merchantRoutes.ts';
@@ -21,6 +23,16 @@ export const app = express();
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
+// Lazy asynchronous database synchronization middleware for Serverless & Cold-Starts
+app.use(async (req, res, next) => {
+  try {
+    await foodDb.ensureInitialized();
+  } catch {
+    // Continue with resilient local snapshot
+  }
+  next();
+});
+
 // Attach user authentication from tokens or headers
 app.use(authenticateToken);
 
@@ -29,6 +41,11 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     system: 'tumpang-food',
+    database: {
+      isolatedDatabaseId: foodConfig.databaseId,
+      firebaseAdminConfigured: isFirestoreAdminConfigured(),
+      usingServiceAccount: isUsingServiceAccount()
+    },
     timestamp: new Date().toISOString()
   });
 });

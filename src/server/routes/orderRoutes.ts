@@ -4,6 +4,7 @@
  * 
  * Tumpang Food Order Routes
  * Handles order placements, recalculations, driver assignments, and payment proofs.
+ * Enforces payment expiration rules, terminal state guards, and RBAC order visibility.
  */
 
 import { Router, Request, Response } from 'express';
@@ -13,20 +14,41 @@ import { requireRole } from '../auth.ts';
 
 export const orderRouter = Router();
 
+// Order list - Protected by RBAC
 orderRouter.get('/', (req: Request, res: Response) => {
-  res.json(foodDb.getOrders());
+  const user = req.user;
+  if (!user) {
+    return res.status(401).json({ error: 'Autentikasi diperlukan untuk melihat daftar pesanan.' });
+  }
+
+  if (user.role === 'ADMIN') {
+    return res.json(foodDb.getOrders());
+  }
+
+  if (user.role === 'MERCHANT' && user.entityId) {
+    return res.json(foodDb.getOrdersByMerchant(user.entityId));
+  }
+
+  if (user.role === 'DRIVER' && user.entityId) {
+    return res.json(foodDb.getOrdersByDriver(user.entityId));
+  }
+
+  return res.status(403).json({ error: 'Akses ditolak.' });
 });
 
+// Single order tracking (Public tracking with ID)
 orderRouter.get('/:id', (req: Request, res: Response) => {
   const o = foodDb.getOrderById(req.params.id);
   if (!o) return res.status(404).json({ error: 'Pesanan tidak ditemukan.' });
   res.json(o);
 });
 
+// Customer order history by phone number
 orderRouter.get('/customer/:phone', (req: Request, res: Response) => {
   res.json(foodDb.getOrdersByCustomerPhone(req.params.phone));
 });
 
+// Order creation - Recalculates official prices
 orderRouter.post('/', (req: Request, res: Response) => {
   try {
     const created = foodDb.createOrder(req.body);
@@ -36,14 +58,141 @@ orderRouter.post('/', (req: Request, res: Response) => {
   }
 });
 
+// Order status/details update
 orderRouter.put('/:id', (req: Request, res: Response) => {
-  const { userId, role, ...updates } = req.body;
+  const user = req.user;
+  const currentOrder = foodDb.getOrderById(req.params.id);
+  if (!currentOrder) {
+    return res.status(404).json({ error: 'Pesanan tidak ditemukan.' });
+  }
+
+  const { userId, role, customerPhone, cancelReason, overrideExpired, ...rawUpdates } = req.body;
+  const updates: any = { ...rawUpdates };
+
+  // STRIP SENSITIVE / TAMPER-PRONE FIELDS
+  delete updates.isSettled;
+  delete updates.settlementId;
+  delete updates.settledAt;
+  delete updates.total;
+  delete updates.subtotal;
+  delete updates.serviceFee;
+  delete updates.deliveryFee;
+  delete updates.merchantId;
+  delete updates.id;
+
+  // 1. UNAUTHENTICATED REQUEST (Customer Cancellation only)
+  if (!user) {
+    const isCustomerCancel =
+      updates.status === OrderStatus.CANCELLED &&
+      customerPhone &&
+      String(customerPhone).trim() === String(currentOrder.customerPhone).trim() &&
+      (currentOrder.status === OrderStatus.WAITING_PAYMENT ||
+        currentOrder.status === OrderStatus.WAITING_PAYMENT_VERIFICATION);
+
+    if (!isCustomerCancel) {
+      return res.status(401).json({
+        error: 'Akses ditolak: Autentikasi diperlukan untuk mengubah status atau data pesanan.'
+      });
+    }
+
+    try {
+      const updated = foodDb.updateOrder(
+        'CUSTOMER',
+        req.params.id,
+        {
+          status: OrderStatus.CANCELLED,
+          cancelReason: cancelReason || 'Dibatalkan oleh Pelanggan'
+        },
+        'CUSTOMER'
+      );
+      return res.json(updated);
+    } catch (e: any) {
+      return res.status(400).json({ error: e.message });
+    }
+  }
+
+  // 2. MERCHANT ROLE ENFORCEMENT
+  if (user.role === 'MERCHANT') {
+    if (user.entityId !== currentOrder.merchantId && user.userId !== currentOrder.merchantId) {
+      return res.status(403).json({
+        error: 'Akses ditolak: Anda tidak memiliki izin untuk mengelola pesanan milik toko lain.'
+      });
+    }
+
+    // Only allow cooking, ready for pickup, or cancellation
+    if (updates.status) {
+      const allowedMerchantStatuses: OrderStatus[] = [
+        OrderStatus.COOKING,
+        OrderStatus.READY_FOR_PICKUP,
+        OrderStatus.CANCELLED
+      ];
+      if (!allowedMerchantStatuses.includes(updates.status)) {
+        return res.status(403).json({
+          error: `Merchant tidak diizinkan mengubah status pesanan ke ${updates.status}.`
+        });
+      }
+    }
+  }
+
+  // 3. DRIVER ROLE ENFORCEMENT
+  if (user.role === 'DRIVER') {
+    const isAssigned = currentOrder.driverId === user.entityId || currentOrder.driverId === user.userId;
+    const canAcceptTask =
+      !currentOrder.driverId && currentOrder.status === OrderStatus.READY_FOR_PICKUP;
+
+    if (!isAssigned && !canAcceptTask) {
+      return res.status(403).json({
+        error: 'Akses ditolak: Pesanan ini bukan tugas pengantaran Anda.'
+      });
+    }
+
+    if (updates.status) {
+      const allowedDriverStatuses: OrderStatus[] = [
+        OrderStatus.ORDER_PICKED_UP,
+        OrderStatus.COMPLETED
+      ];
+      if (!allowedDriverStatuses.includes(updates.status)) {
+        return res.status(403).json({
+          error: `Driver tidak diizinkan mengubah status pesanan ke ${updates.status}.`
+        });
+      }
+    }
+  }
+
+  // 4. EXPIRED / CANCELLED ORDERS GUARD
+  if (currentOrder.status === OrderStatus.EXPIRED || currentOrder.status === OrderStatus.CANCELLED) {
+    if (updates.status && updates.status !== currentOrder.status) {
+      if (user.role === 'ADMIN' && currentOrder.status === OrderStatus.EXPIRED) {
+        if (!overrideExpired) {
+          return res.status(400).json({
+            error:
+              'Pesanan telah KEDALUWARSA (EXPIRED). Verifikasi pembayaran tidak dapat dilakukan secara tidak sengaja. Sertakan persetujuan eksplisit pembayaran terlambat (overrideExpired: true) beserta catatan administrasi.'
+          });
+        }
+        foodDb.log(
+          user.userId,
+          `Admin explicitly approved late payment for expired order ${currentOrder.id}`,
+          'ADMIN'
+        );
+      } else {
+        return res.status(400).json({
+          error: `Pesanan yang telah ${currentOrder.status} tidak dapat diaktifkan kembali secara langsung.`
+        });
+      }
+    }
+  }
+
+  // Preserve cancel reason if provided
+  if (cancelReason) {
+    updates.cancelReason = cancelReason;
+  }
+
   try {
     const updated = foodDb.updateOrder(
-      userId || req.user?.userId || 'system',
+      user.userId || user.entityId || 'system',
       req.params.id,
       updates,
-      role || req.user?.role || 'SYSTEM'
+      user.role
     );
     res.json(updated);
   } catch (e: any) {
@@ -52,24 +201,52 @@ orderRouter.put('/:id', (req: Request, res: Response) => {
 });
 
 // Admin manual driver assignment
-orderRouter.post('/:id/assign-driver', (req: Request, res: Response) => {
-  const { driverId, userId } = req.body;
+orderRouter.post('/:id/assign-driver', requireRole(['ADMIN']), (req: Request, res: Response) => {
+  const { driverId } = req.body;
   if (!driverId) {
     return res.status(400).json({ error: 'Driver ID wajib disertakan.' });
   }
   try {
-    const updated = foodDb.manualAssignDriver(userId || 'admin', req.params.id, driverId);
+    const updated = foodDb.manualAssignDriver(req.user?.userId || 'admin', req.params.id, driverId);
     res.json(updated);
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }
 });
 
-// Customer payment proof upload
+// Customer payment proof upload - Enforces 10-minute expiry
 orderRouter.post('/:id/upload-payment', (req: Request, res: Response) => {
   const { paymentProof } = req.body;
   if (!paymentProof) {
     return res.status(400).json({ error: 'Bukti pembayaran wajib diunggah.' });
+  }
+
+  const order = foodDb.getOrderById(req.params.id);
+  if (!order) {
+    return res.status(404).json({ error: 'Pesanan tidak ditemukan.' });
+  }
+
+  // Validate payment expiration window
+  const now = Date.now();
+  const expiryTime = order.paymentExpiresAt ? new Date(order.paymentExpiresAt).getTime() : 0;
+
+  if (expiryTime && now > expiryTime && order.status === OrderStatus.WAITING_PAYMENT) {
+    foodDb.updateOrder('SYSTEM', order.id, { status: OrderStatus.EXPIRED }, 'SYSTEM');
+    return res.status(400).json({
+      error: 'Waktu pembayaran untuk pesanan ini telah kedaluwarsa (melebihi 10 menit). Pesanan ditandai sebagai KEDALUWARSA dan tidak dapat diproses lagi.'
+    });
+  }
+
+  if (order.status === OrderStatus.EXPIRED) {
+    return res.status(400).json({
+      error: 'Pesanan ini telah kedaluwarsa dan tidak dapat menerima bukti pembayaran lagi.'
+    });
+  }
+
+  if (order.status === OrderStatus.CANCELLED) {
+    return res.status(400).json({
+      error: 'Pesanan ini telah dibatalkan dan tidak dapat menerima bukti pembayaran.'
+    });
   }
 
   try {
@@ -88,22 +265,34 @@ orderRouter.post('/:id/upload-payment', (req: Request, res: Response) => {
   }
 });
 
-// Driver delivery proof upload
-orderRouter.post('/:id/upload-delivery', (req: Request, res: Response) => {
-  const { deliveryProof, userId } = req.body;
+// Driver delivery proof upload - Protected
+orderRouter.post('/:id/upload-delivery', requireRole(['DRIVER', 'ADMIN']), (req: Request, res: Response) => {
+  const { deliveryProof } = req.body;
   if (!deliveryProof) {
     return res.status(400).json({ error: 'Bukti foto pengantaran wajib disertakan.' });
   }
 
+  const order = foodDb.getOrderById(req.params.id);
+  if (!order) {
+    return res.status(404).json({ error: 'Pesanan tidak ditemukan.' });
+  }
+
+  const user = req.user!;
+  if (user.role === 'DRIVER') {
+    if (order.driverId !== user.entityId && order.driverId !== user.userId) {
+      return res.status(403).json({ error: 'Akses ditolak: Anda bukan kurir yang ditugaskan untuk pesanan ini.' });
+    }
+  }
+
   try {
     const updated = foodDb.updateOrder(
-      userId || 'driver',
+      user.userId || user.entityId || 'driver',
       req.params.id,
       {
         deliveryProof,
         status: OrderStatus.COMPLETED
       },
-      'DRIVER'
+      user.role
     );
     res.json(updated);
   } catch (e: any) {

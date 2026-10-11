@@ -4,19 +4,29 @@
  * 
  * Tumpang Food Driver Routes
  * Handles courier profile operations, status toggles, and delivery assignments.
+ * Protected with RBAC so drivers can only view and manage their own profile and tasks.
  */
 
 import { Router, Request, Response } from 'express';
 import { foodDb } from '../db.ts';
-import { requireRole } from '../auth.ts';
+import { requireRole, requireDriverSelf } from '../auth.ts';
 
 export const driverRouter = Router();
 
+// Driver list - Safe public list for login/assignment selection, sanitized
 driverRouter.get('/', (req: Request, res: Response) => {
-  res.json(foodDb.getDrivers());
+  const drivers = foodDb.getDrivers();
+  // Strip any passwords or private data
+  const sanitized = drivers.map(d => ({
+    id: d.id,
+    name: d.name,
+    phone: d.phone,
+    active: d.active
+  }));
+  res.json(sanitized);
 });
 
-driverRouter.get('/:id', (req: Request, res: Response) => {
+driverRouter.get('/:id', requireDriverSelf('id'), (req: Request, res: Response) => {
   const d = foodDb.getDriverById(req.params.id);
   if (!d) return res.status(404).json({ error: 'Driver not found' });
   res.json(d);
@@ -25,17 +35,22 @@ driverRouter.get('/:id', (req: Request, res: Response) => {
 driverRouter.post('/', requireRole(['ADMIN']), (req: Request, res: Response) => {
   const { userId, ...driverData } = req.body;
   try {
-    const created = foodDb.createDriver(userId || 'admin', driverData);
+    const created = foodDb.createDriver(req.user?.userId || userId || 'admin', driverData);
     res.status(201).json(created);
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }
 });
 
-driverRouter.put('/:id', (req: Request, res: Response) => {
+driverRouter.put('/:id', requireDriverSelf('id'), (req: Request, res: Response) => {
   const { userId, role, ...updates } = req.body;
   try {
-    const updated = foodDb.updateDriver(userId || req.params.id, req.params.id, updates, role || 'DRIVER');
+    const updated = foodDb.updateDriver(
+      req.user?.userId || userId || req.params.id,
+      req.params.id,
+      updates,
+      req.user?.role || role || 'DRIVER'
+    );
     res.json(updated);
   } catch (e: any) {
     res.status(400).json({ error: e.message });
@@ -44,11 +59,11 @@ driverRouter.put('/:id', (req: Request, res: Response) => {
 
 driverRouter.delete('/:id', requireRole(['ADMIN']), (req: Request, res: Response) => {
   const { userId } = req.body;
-  const success = foodDb.deleteDriver(userId || 'admin', req.params.id);
+  const success = foodDb.deleteDriver(req.user?.userId || userId || 'admin', req.params.id);
   if (success) res.json({ success: true });
   else res.status(404).json({ error: 'Driver not found' });
 });
 
-driverRouter.get('/:driverId/orders', (req: Request, res: Response) => {
+driverRouter.get('/:driverId/orders', requireDriverSelf('driverId'), (req: Request, res: Response) => {
   res.json(foodDb.getOrdersByDriver(req.params.driverId));
 });

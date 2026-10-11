@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  * 
  * Tumpang Food Authentication & RBAC Authorization Module
- * Provides password hashing, token creation/verification, and security middleware.
+ * Provides password hashing, token creation/verification, and strict security middleware.
  */
 
 import crypto from 'crypto';
@@ -14,7 +14,7 @@ export interface AuthUser {
   userId: string;
   role: 'ADMIN' | 'MERCHANT' | 'DRIVER' | 'CUSTOMER';
   email?: string;
-  entityId?: string; // Merchant ID or Driver ID if applicable
+  entityId?: string; // Merchant ID or Driver ID
 }
 
 declare global {
@@ -37,7 +37,7 @@ export function hashPassword(password: string): string {
 }
 
 /**
- * Verify password against stored hash or plaintext legacy password.
+ * Verify password against stored hash or plaintext password.
  * Returns { valid: boolean, needsRehash: boolean }
  */
 export function verifyPassword(password: string, storedHash?: string): { valid: boolean; needsRehash: boolean } {
@@ -54,13 +54,13 @@ export function verifyPassword(password: string, storedHash?: string): { valid: 
     return { valid, needsRehash: false };
   }
 
-  // Legacy plaintext match
+  // Legacy match
   const valid = password.trim() === storedHash.trim();
   return { valid, needsRehash: valid };
 }
 
 /**
- * Create HMAC-SHA256 signed JWT-like token.
+ * Create HMAC-SHA256 signed JWT token.
  */
 export function createAuthToken(user: AuthUser, expiresInHours = 72): string {
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
@@ -84,21 +84,6 @@ export function createAuthToken(user: AuthUser, expiresInHours = 72): string {
  */
 export function verifyAuthToken(token: string): AuthUser | null {
   if (!token) return null;
-
-  // Handle legacy format tokens e.g. "token_merchant_m1_12345"
-  if (token.startsWith('token_admin_')) {
-    return { userId: 'admin', role: 'ADMIN', email: foodConfig.adminEmail };
-  }
-  if (token.startsWith('token_merchant_')) {
-    const parts = token.split('_');
-    const mId = parts[2] || '';
-    return { userId: mId, role: 'MERCHANT', entityId: mId };
-  }
-  if (token.startsWith('token_driver_')) {
-    const parts = token.split('_');
-    const dId = parts[2] || '';
-    return { userId: dId, role: 'DRIVER', entityId: dId };
-  }
 
   try {
     const parts = token.split('.');
@@ -131,7 +116,7 @@ export function verifyAuthToken(token: string): AuthUser | null {
 }
 
 /**
- * Express middleware to authenticate token from headers or query.
+ * Express middleware to authenticate token from headers.
  */
 export function authenticateToken(req: Request, res: Response, next: NextFunction) {
   let token = '';
@@ -140,18 +125,6 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
     token = authHeader.substring(7);
   } else if (req.headers['x-auth-token']) {
     token = String(req.headers['x-auth-token']);
-  } else if (req.query?.token) {
-    token = String(req.query.token);
-  }
-
-  // Also check email-based header for backwards compatibility
-  const authEmail = (req.headers['x-auth-email'] || req.headers['x-user-email']) as string;
-  if (!token && authEmail) {
-    const cleanEmail = authEmail.trim().toLowerCase();
-    if (isAdminEmail(cleanEmail)) {
-      req.user = { userId: 'admin', role: 'ADMIN', email: cleanEmail };
-      return next();
-    }
   }
 
   if (token) {
@@ -180,29 +153,21 @@ export function isAdminEmail(email?: string): boolean {
 }
 
 /**
- * Require specific role middleware
+ * Strict role-based access control middleware
  */
 export function requireRole(allowedRoles: Array<'ADMIN' | 'MERCHANT' | 'DRIVER' | 'CUSTOMER'>) {
   return (req: Request, res: Response, next: NextFunction) => {
-    // If not authenticated via token, check if request body/query has role override for backwards compatibility
-    const userRole = req.user?.role;
-    
-    // Check fallback for admin email or admin header
-    const authEmail = (req.headers['x-auth-email'] || req.headers['x-user-email']) as string;
-    if (allowedRoles.includes('ADMIN') && (isAdminEmail(authEmail) || isAdminEmail(req.body?.email) || isAdminEmail(req.body?.userId))) {
-      return next();
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'Akses ditolak: Autentikasi diperlukan. Silakan login terlebih dahulu.' });
     }
 
-    if (!userRole) {
-      // Allow demo access if explicit
-      if (req.headers['x-demo-mode'] === 'true' || req.query?.demo === 'true') {
-        return next();
-      }
-      return res.status(401).json({ error: 'Akses ditolak: Autentikasi diperlukan.' });
+    if (user.role === 'ADMIN') {
+      return next(); // Admin has universal access
     }
 
-    if (!allowedRoles.includes(userRole) && userRole !== 'ADMIN') {
-      return res.status(403).json({ error: 'Akses ditolak: Peran Anda tidak memiliki izin untuk tindakan ini.' });
+    if (!allowedRoles.includes(user.role)) {
+      return res.status(403).json({ error: `Akses ditolak: Peran ${user.role} tidak memiliki izin untuk tindakan ini.` });
     }
 
     next();
@@ -210,31 +175,50 @@ export function requireRole(allowedRoles: Array<'ADMIN' | 'MERCHANT' | 'DRIVER' 
 }
 
 /**
- * Restrict merchant operations to the store owner or admin
+ * Restrict merchant operations strictly to the verified store owner or admin.
+ * Verifies against req.user.entityId from the cryptographically signed token.
  */
 export function requireMerchantOwner(paramName = 'merchantId') {
   return (req: Request, res: Response, next: NextFunction) => {
-    const targetMerchantId = req.params[paramName] || req.body[paramName] || req.params.id;
-    if (!targetMerchantId) return next();
+    const targetMerchantId = req.params[paramName] || req.params.merchantId || req.params.id || req.body[paramName];
+    const user = req.user;
 
-    if (req.user?.role === 'ADMIN') return next();
+    if (!user) {
+      return res.status(401).json({ error: 'Akses ditolak: Autentikasi diperlukan. Silakan login terlebih dahulu.' });
+    }
 
-    // Check if user is the merchant owner
-    if (req.user?.role === 'MERCHANT' && (req.user.entityId === targetMerchantId || req.user.userId === targetMerchantId)) {
+    if (user.role === 'ADMIN') {
       return next();
     }
 
-    // Check email fallback
-    const authEmail = (req.headers['x-auth-email'] || req.headers['x-user-email']) as string;
-    if (isAdminEmail(authEmail)) {
+    if (user.role === 'MERCHANT' && (user.entityId === targetMerchantId || user.userId === targetMerchantId)) {
       return next();
     }
 
-    // Pass through if legacy request with matching userId
-    if (req.body?.userId === targetMerchantId || req.body?.userId === 'admin') {
+    return res.status(403).json({ error: 'Akses ditolak: Anda tidak memiliki izin untuk mengakses atau memodifikasi data toko ini.' });
+  };
+}
+
+/**
+ * Restrict driver operations strictly to the verified driver themselves or admin.
+ */
+export function requireDriverSelf(paramName = 'driverId') {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const targetDriverId = req.params[paramName] || req.params.driverId || req.params.id || req.body[paramName];
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({ error: 'Akses ditolak: Autentikasi diperlukan. Silakan login terlebih dahulu.' });
+    }
+
+    if (user.role === 'ADMIN') {
       return next();
     }
 
-    next();
+    if (user.role === 'DRIVER' && (user.entityId === targetDriverId || user.userId === targetDriverId)) {
+      return next();
+    }
+
+    return res.status(403).json({ error: 'Akses ditolak: Anda tidak memiliki izin untuk tugas kurir ini.' });
   };
 }

@@ -8,8 +8,6 @@
 
 import fs from 'fs';
 import path from 'path';
-import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs } from 'firebase/firestore';
 import {
   Merchant, Category, MenuItem, Order, Driver, Settlement, AuditLog, SystemConfig,
   OrderStatus, SettlementStatus, AssignmentMode, PartnerRegistration, LicenseKey
@@ -17,46 +15,23 @@ import {
 import { foodConfig } from './config.ts';
 import { hashPassword, verifyPassword } from './auth.ts';
 import { OrderService } from './services/orderService.ts';
+import {
+  getAdminDb,
+  safeAdminSetDoc,
+  safeAdminDeleteDoc,
+  safeAdminGetDoc,
+  safeAdminGetDocs,
+  runAdminTransaction,
+  removeUndefinedFields,
+  isFirestoreAdminConfigured,
+  isUsingServiceAccount
+} from './firebaseAdmin.ts';
 
 const FOOD_DB_FILE = foodConfig.localDbFile;
 const LEGACY_DB_FILE = foodConfig.legacyDbFile;
 
-// --- FIRESTORE CLIENT INITIALIZATION ---
-let firestoreDb: any = null;
-try {
-  const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
-  if (fs.existsSync(configPath)) {
-    const rawConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-    const app = initializeApp(rawConfig);
-    firestoreDb = getFirestore(app, foodConfig.databaseId);
-    console.log(`[TumpangFood DB] Firestore initialized for database: ${foodConfig.databaseId}`);
-  }
-} catch (e) {
-  console.error('[TumpangFood DB] Failed to initialize Firestore SDK:', e);
-}
-
-// Helper to remove undefined fields recursively for Firestore compatibility
-function removeUndefinedFields(obj: any): any {
-  if (obj === null || typeof obj !== 'object') return obj;
-  if (Array.isArray(obj)) return obj.map(removeUndefinedFields);
-  const cleaned: Record<string, any> = {};
-  for (const [key, val] of Object.entries(obj)) {
-    if (val !== undefined) {
-      cleaned[key] = removeUndefinedFields(val);
-    }
-  }
-  return cleaned;
-}
-
-async function safeFirestoreSetDoc(colName: string, docId: string, data: any) {
-  if (!firestoreDb) return;
-  try {
-    const cleaned = removeUndefinedFields(data);
-    await setDoc(doc(firestoreDb, colName, docId), cleaned);
-  } catch (err) {
-    console.warn(`[TumpangFood DB] Firestore write failed for ${colName}/${docId}:`, err);
-  }
-}
+// Administrative Firestore set helper alias
+const safeFirestoreSetDoc = safeAdminSetDoc;
 
 interface DatabaseSchema {
   merchants: Merchant[];
@@ -101,45 +76,99 @@ export class FoodDatabase {
     this.loadAndMigrate();
   }
 
+  public createBackup(): boolean {
+    try {
+      const backupPath = FOOD_DB_FILE + '.backup.json';
+      fs.writeFileSync(backupPath, JSON.stringify(this.data, null, 2), 'utf-8');
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   /**
-   * Loads from food database file or migrates safely from legacy file if initial.
+   * Loads from food database file or migrates safely from backup / legacy file.
    */
   private loadAndMigrate() {
+    const backupPath = FOOD_DB_FILE + '.backup.json';
     try {
       if (fs.existsSync(FOOD_DB_FILE)) {
         const content = fs.readFileSync(FOOD_DB_FILE, 'utf-8');
-        this.data = JSON.parse(content);
+        if (content && content.trim().length > 10) {
+          this.data = JSON.parse(content);
+          this.ensureStructure();
+          this.migratePasswords();
+          this.createBackup();
+          console.log('[TumpangFood DB] Loaded primary operational state from tumpang_food_db.json');
+          return;
+        }
+      }
+
+      // Fallback 1: Try backup snapshot
+      if (fs.existsSync(backupPath)) {
+        console.warn('[TumpangFood DB] Primary database corrupted or empty. Recovering from backup snapshot...');
+        const backupContent = fs.readFileSync(backupPath, 'utf-8');
+        this.data = JSON.parse(backupContent);
         this.ensureStructure();
-        console.log('[TumpangFood DB] Loaded state from tumpang_food_db.json');
+        this.save();
+        console.log('[TumpangFood DB] Recovery from backup successful.');
         return;
       }
 
-      // Safe migration from legacy database file
+      // Fallback 2: Safe initial migration from legacy database file
       if (fs.existsSync(LEGACY_DB_FILE)) {
         console.log('[TumpangFood DB] Migrating data from legacy tumpang_db.json...');
         const legacyContent = fs.readFileSync(LEGACY_DB_FILE, 'utf-8');
         this.data = JSON.parse(legacyContent);
         this.ensureStructure();
-
-        // Migrate passwords: ensure secure hashes
-        for (const m of this.data.merchants) {
-          if (m.password && !m.password.startsWith('pbkdf2$')) {
-            m.password = hashPassword(m.password);
-          }
-        }
-
+        this.migratePasswords();
         this.save();
+        this.createBackup();
         console.log('[TumpangFood DB] Migration complete! Saved to tumpang_food_db.json.');
       } else {
         // Fresh initial seed
         this.seedInitial();
         this.save();
+        this.createBackup();
       }
     } catch (err) {
-      console.error('[TumpangFood DB] Error during load/migrate:', err);
+      console.error('[TumpangFood DB] Error during load/migrate, attempting emergency recovery:', err);
+      if (fs.existsSync(backupPath)) {
+        try {
+          this.data = JSON.parse(fs.readFileSync(backupPath, 'utf-8'));
+          this.ensureStructure();
+          this.save();
+          return;
+        } catch {
+          // ignore
+        }
+      }
       this.seedInitial();
       this.save();
     }
+  }
+
+  private migratePasswords() {
+    let changed = false;
+    for (const m of this.data.merchants) {
+      if (!m.password) {
+        m.password = hashPassword(m.id + '123');
+        changed = true;
+      } else if (!m.password.startsWith('pbkdf2$')) {
+        m.password = hashPassword(m.password);
+        changed = true;
+      }
+    }
+    for (const d of this.data.drivers) {
+      if (!(d as any).password) {
+        (d as any).password = hashPassword(d.id + '123');
+        changed = true;
+      } else if (!(d as any).password.startsWith('pbkdf2$')) {
+        (d as any).password = hashPassword((d as any).password);
+        changed = true;
+      }
+    }
+    if (changed) this.save();
   }
 
   private ensureStructure() {
@@ -166,87 +195,107 @@ export class FoodDatabase {
 
   public save() {
     try {
+      const dir = path.dirname(FOOD_DB_FILE);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
       fs.writeFileSync(FOOD_DB_FILE, JSON.stringify(this.data, null, 2), 'utf-8');
-    } catch (e) {
-      console.error('[TumpangFood DB] Failed to save database file:', e);
+    } catch (e: any) {
+      if (e.code === 'EROFS') {
+        console.warn('[TumpangFood DB] Read-only filesystem detected. Disk write skipped; persisting in-memory and Firestore.');
+      } else {
+        console.error('[TumpangFood DB] Failed to save database file:', e);
+      }
     }
   }
 
+  private initPromise: Promise<void> | null = null;
+
+  public async ensureInitialized(): Promise<void> {
+    if (this.isInitialized) return;
+    if (!this.initPromise) {
+      this.initPromise = this.init();
+    }
+    return this.initPromise;
+  }
+
   /**
-   * Synchronize state with Firebase Firestore
+   * Synchronize state with Firebase Firestore using timestamp-based conflict resolution.
    */
   public async init() {
     if (this.isInitialized) return;
     this.isInitialized = true;
 
-    if (!firestoreDb) {
-      console.warn('[TumpangFood DB] Firestore not available, continuing with local storage.');
+    if (!isFirestoreAdminConfigured()) {
+      console.warn('[TumpangFood DB] Firestore Admin SDK not configured, operating with persistent local storage.');
       return;
     }
 
     try {
-      console.log('[TumpangFood DB] Syncing with Firestore database:', foodConfig.databaseId);
+      console.log('[TumpangFood DB] Syncing with Firestore database via Admin SDK:', foodConfig.databaseId);
 
       // System Config
       try {
-        const configDoc = await getDoc(doc(firestoreDb, 'systemConfig', 'config_1'));
-        if (configDoc.exists()) {
-          this.data.systemConfig = { ...initialConfig, ...configDoc.data() } as SystemConfig;
+        const remoteConfig = await safeAdminGetDoc('systemConfig', 'config_1');
+        if (remoteConfig) {
+          this.data.systemConfig = { ...initialConfig, ...remoteConfig } as SystemConfig;
         } else {
-          await setDoc(doc(firestoreDb, 'systemConfig', 'config_1'), this.data.systemConfig);
+          await safeAdminSetDoc('systemConfig', 'config_1', this.data.systemConfig);
         }
-      } catch (e) {
-        console.warn('[TumpangFood DB] Failed to sync systemConfig with Firestore:', e);
+      } catch (e: any) {
+        console.warn('[TumpangFood DB] Failed to sync systemConfig with Firestore:', e.message);
       }
 
       // Merchants
       try {
-        const merchantSnap = await getDocs(collection(firestoreDb, 'merchants'));
-        if (!merchantSnap.empty) {
-          const remoteMerchants = merchantSnap.docs.map(d => d.data() as Merchant);
-          // Merge remote merchants with local
-          for (const rm of remoteMerchants) {
+        const remoteMerchants = await safeAdminGetDocs('merchants');
+        if (remoteMerchants.length > 0) {
+          for (const rm of remoteMerchants as Merchant[]) {
             const idx = this.data.merchants.findIndex(m => m.id === rm.id);
             if (idx >= 0) {
-              this.data.merchants[idx] = { ...this.data.merchants[idx], ...rm };
+              const localTime = new Date(this.data.merchants[idx].updatedAt || 0).getTime();
+              const remoteTime = new Date(rm.updatedAt || 0).getTime();
+              if (remoteTime >= localTime) {
+                this.data.merchants[idx] = { ...this.data.merchants[idx], ...rm };
+              } else {
+                await safeAdminSetDoc('merchants', this.data.merchants[idx].id, this.data.merchants[idx]);
+              }
             } else {
               this.data.merchants.push(rm);
             }
           }
         } else if (this.data.merchants.length > 0) {
           for (const m of this.data.merchants) {
-            await setDoc(doc(firestoreDb, 'merchants', m.id), m);
+            await safeAdminSetDoc('merchants', m.id, m);
           }
         }
-      } catch (e) {
-        console.warn('[TumpangFood DB] Failed to sync merchants with Firestore:', e);
+      } catch (e: any) {
+        console.warn('[TumpangFood DB] Failed to sync merchants with Firestore:', e.message);
       }
 
       // Categories
       try {
-        const catSnap = await getDocs(collection(firestoreDb, 'categories'));
-        if (!catSnap.empty) {
-          const remoteCats = catSnap.docs.map(d => d.data() as Category);
-          for (const rc of remoteCats) {
+        const remoteCats = await safeAdminGetDocs('categories');
+        if (remoteCats.length > 0) {
+          for (const rc of remoteCats as Category[]) {
             if (!this.data.categories.some(c => c.id === rc.id)) {
               this.data.categories.push(rc);
             }
           }
         } else if (this.data.categories.length > 0) {
           for (const c of this.data.categories) {
-            await setDoc(doc(firestoreDb, 'categories', c.id), c);
+            await safeAdminSetDoc('categories', c.id, c);
           }
         }
-      } catch (e) {
-        console.warn('[TumpangFood DB] Failed to sync categories with Firestore:', e);
+      } catch (e: any) {
+        console.warn('[TumpangFood DB] Failed to sync categories with Firestore:', e.message);
       }
 
       // Menu Items
       try {
-        const menuSnap = await getDocs(collection(firestoreDb, 'menuItems'));
-        if (!menuSnap.empty) {
-          const remoteItems = menuSnap.docs.map(d => d.data() as MenuItem);
-          for (const ri of remoteItems) {
+        const remoteItems = await safeAdminGetDocs('menuItems');
+        if (remoteItems.length > 0) {
+          for (const ri of remoteItems as MenuItem[]) {
             const idx = this.data.menuItems.findIndex(i => i.id === ri.id);
             if (idx >= 0) {
               this.data.menuItems[idx] = { ...this.data.menuItems[idx], ...ri };
@@ -256,35 +305,129 @@ export class FoodDatabase {
           }
         } else if (this.data.menuItems.length > 0) {
           for (const i of this.data.menuItems) {
-            await setDoc(doc(firestoreDb, 'menuItems', i.id), i);
+            await safeAdminSetDoc('menuItems', i.id, i);
           }
         }
-      } catch (e) {
-        console.warn('[TumpangFood DB] Failed to sync menuItems with Firestore:', e);
+      } catch (e: any) {
+        console.warn('[TumpangFood DB] Failed to sync menuItems with Firestore:', e.message);
       }
 
-      // Orders
+      // Drivers
       try {
-        const orderSnap = await getDocs(collection(firestoreDb, 'orders'));
-        if (!orderSnap.empty) {
-          const remoteOrders = orderSnap.docs.map(d => d.data() as Order);
-          for (const ro of remoteOrders) {
+        const remoteDrivers = await safeAdminGetDocs('drivers');
+        if (remoteDrivers.length > 0) {
+          for (const rd of remoteDrivers as Driver[]) {
+            const idx = this.data.drivers.findIndex(d => d.id === rd.id);
+            if (idx >= 0) {
+              this.data.drivers[idx] = { ...this.data.drivers[idx], ...rd };
+            } else {
+              this.data.drivers.push(rd);
+            }
+          }
+        } else if (this.data.drivers.length > 0) {
+          for (const d of this.data.drivers) {
+            await safeAdminSetDoc('drivers', d.id, d);
+          }
+        }
+      } catch (e: any) {
+        console.warn('[TumpangFood DB] Failed to sync drivers with Firestore:', e.message);
+      }
+
+      // Orders - Timestamp-aware synchronization
+      try {
+        const remoteOrders = await safeAdminGetDocs('orders');
+        if (remoteOrders.length > 0) {
+          for (const ro of remoteOrders as Order[]) {
             const idx = this.data.orders.findIndex(o => o.id === ro.id);
             if (idx >= 0) {
-              this.data.orders[idx] = { ...this.data.orders[idx], ...ro };
+              const localTime = new Date((this.data.orders[idx] as any).updatedAt || this.data.orders[idx].createdAt || 0).getTime();
+              const remoteTime = new Date((ro as any).updatedAt || ro.createdAt || 0).getTime();
+              if (remoteTime >= localTime) {
+                this.data.orders[idx] = { ...this.data.orders[idx], ...ro };
+              } else {
+                await safeAdminSetDoc('orders', this.data.orders[idx].id, this.data.orders[idx]);
+              }
             } else {
               this.data.orders.push(ro);
             }
           }
+        } else if (this.data.orders.length > 0) {
+          for (const o of this.data.orders) {
+            await safeAdminSetDoc('orders', o.id, o);
+          }
         }
-      } catch (e) {
-        console.warn('[TumpangFood DB] Failed to sync orders with Firestore:', e);
+      } catch (e: any) {
+        console.warn('[TumpangFood DB] Failed to sync orders with Firestore:', e.message);
+      }
+
+      // Settlements
+      try {
+        const remoteSets = await safeAdminGetDocs('settlements');
+        if (remoteSets.length > 0) {
+          for (const rs of remoteSets as Settlement[]) {
+            const idx = this.data.settlements.findIndex(s => s.id === rs.id);
+            if (idx >= 0) {
+              this.data.settlements[idx] = { ...this.data.settlements[idx], ...rs };
+            } else {
+              this.data.settlements.push(rs);
+            }
+          }
+        } else if (this.data.settlements.length > 0) {
+          for (const s of this.data.settlements) {
+            await safeAdminSetDoc('settlements', s.id, s);
+          }
+        }
+      } catch (e: any) {
+        console.warn('[TumpangFood DB] Failed to sync settlements with Firestore:', e.message);
+      }
+
+      // Partner Registrations
+      try {
+        const remoteRegs = await safeAdminGetDocs('partnerRegistrations');
+        if (remoteRegs.length > 0) {
+          for (const rr of remoteRegs as PartnerRegistration[]) {
+            const idx = this.data.partnerRegistrations.findIndex(r => r.id === rr.id);
+            if (idx >= 0) {
+              this.data.partnerRegistrations[idx] = { ...this.data.partnerRegistrations[idx], ...rr };
+            } else {
+              this.data.partnerRegistrations.push(rr);
+            }
+          }
+        } else if (this.data.partnerRegistrations.length > 0) {
+          for (const r of this.data.partnerRegistrations) {
+            await safeAdminSetDoc('partnerRegistrations', r.id, r);
+          }
+        }
+      } catch (e: any) {
+        console.warn('[TumpangFood DB] Failed to sync partnerRegistrations with Firestore:', e.message);
+      }
+
+      // Licenses
+      try {
+        const remoteLics = await safeAdminGetDocs('licenses');
+        if (remoteLics.length > 0) {
+          for (const rl of remoteLics as LicenseKey[]) {
+            const idx = this.data.licenses.findIndex(l => l.key === rl.key);
+            if (idx >= 0) {
+              this.data.licenses[idx] = { ...this.data.licenses[idx], ...rl };
+            } else {
+              this.data.licenses.push(rl);
+            }
+          }
+        } else if (this.data.licenses.length > 0) {
+          for (const l of this.data.licenses) {
+            await safeAdminSetDoc('licenses', l.key, l);
+          }
+        }
+      } catch (e: any) {
+        console.warn('[TumpangFood DB] Failed to sync licenses with Firestore:', e.message);
       }
 
       this.save();
-      console.log('[TumpangFood DB] Firestore synchronization successful.');
-    } catch (err) {
-      console.error('[TumpangFood DB] Firestore sync failed, continuing locally:', err);
+      this.createBackup();
+      console.log('[TumpangFood DB] Firestore Admin synchronization successful.');
+    } catch (err: any) {
+      console.error('[TumpangFood DB] Firestore sync failed, continuing locally:', err.message);
     }
   }
 
@@ -328,11 +471,17 @@ export class FoodDatabase {
 
   // --- MERCHANTS ---
   public getMerchants(): Merchant[] {
-    return this.data.merchants;
+    return this.data.merchants.map(m => {
+      const { password, ...safe } = m;
+      return safe as Merchant;
+    });
   }
 
   public getMerchantById(id: string): Merchant | undefined {
-    return this.data.merchants.find(m => m.id === id);
+    const m = this.data.merchants.find(m => m.id === id);
+    if (!m) return undefined;
+    const { password, ...safe } = m;
+    return safe as Merchant;
   }
 
   public getMerchantByEmailOrPhone(identifier: string): Merchant | undefined {
@@ -402,9 +551,7 @@ export class FoodDatabase {
     this.save();
     this.log(userId, `Deleted merchant ${name}`, 'ADMIN');
 
-    if (firestoreDb) {
-      deleteDoc(doc(firestoreDb, 'merchants', id)).catch(() => {});
-    }
+    safeAdminDeleteDoc('merchants', id);
     return true;
   }
 
@@ -476,9 +623,7 @@ export class FoodDatabase {
     this.data.menuItems = this.data.menuItems.filter(i => i.categoryId !== id);
     this.save();
 
-    if (firestoreDb) {
-      deleteDoc(doc(firestoreDb, 'categories', id)).catch(() => {});
-    }
+    safeAdminDeleteDoc('categories', id);
     return true;
   }
 
@@ -531,19 +676,23 @@ export class FoodDatabase {
     this.save();
     this.log(merchantId, `Deleted menu item ${name}`, 'MERCHANT');
 
-    if (firestoreDb) {
-      deleteDoc(doc(firestoreDb, 'menuItems', id)).catch(() => {});
-    }
+    safeAdminDeleteDoc('menuItems', id);
     return true;
   }
 
   // --- DRIVERS ---
   public getDrivers(): Driver[] {
-    return this.data.drivers;
+    return this.data.drivers.map(d => {
+      const { password, ...safe } = d as any;
+      return safe as Driver;
+    });
   }
 
   public getDriverById(id: string): Driver | undefined {
-    return this.data.drivers.find(d => d.id === id);
+    const d = this.data.drivers.find(d => d.id === id);
+    if (!d) return undefined;
+    const { password, ...safe } = d as any;
+    return safe as Driver;
   }
 
   public getDriverByEmailOrPhone(identifier: string): Driver | undefined {
@@ -597,9 +746,7 @@ export class FoodDatabase {
     this.save();
     this.log(userId, `Deleted driver ${name}`, 'ADMIN');
 
-    if (firestoreDb) {
-      deleteDoc(doc(firestoreDb, 'drivers', id)).catch(() => {});
-    }
+    safeAdminDeleteDoc('drivers', id);
     return true;
   }
 
@@ -770,39 +917,183 @@ export class FoodDatabase {
     return this.data.settlements.filter(s => s.merchantId === merchantId);
   }
 
-  public createSettlement(userId: string, settlementData: Omit<Settlement, 'id' | 'createdAt'> & { orderIds?: string[] }): Settlement {
-    const newSettlement: Settlement = {
-      id: 'set_' + Math.random().toString(36).substring(2, 9),
-      merchantId: settlementData.merchantId,
-      merchantName: settlementData.merchantName,
-      orderCount: settlementData.orderCount,
-      totalSales: settlementData.totalSales,
-      totalCommission: settlementData.totalCommission,
-      amountToPay: settlementData.amountToPay,
-      status: settlementData.status || SettlementStatus.WAITING_CONFIRMATION,
-      bankName: settlementData.bankName,
-      bankAccount: settlementData.bankAccount,
-      bankHolder: settlementData.bankHolder,
-      createdAt: new Date().toISOString()
-    };
+  private settlementMutex: Promise<any> = Promise.resolve();
 
-    // Mark eligible orders as settled
-    if (settlementData.orderIds && Array.isArray(settlementData.orderIds)) {
-      for (const ordId of settlementData.orderIds) {
-        const ord = this.data.orders.find(o => o.id === ordId);
-        if (ord) {
-          (ord as any).isSettled = true;
-          safeFirestoreSetDoc('orders', ord.id, ord);
+  /**
+   * Serializes settlement operations across the process and host instances to prevent concurrent double-settlements
+   */
+  public async runWithSettlementLock<T>(fn: () => Promise<T> | T): Promise<T> {
+    let release: () => void;
+    const waitPromise = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    const currentMutex = this.settlementMutex;
+    this.settlementMutex = currentMutex.then(() => waitPromise).catch(() => waitPromise);
+    await currentMutex;
+
+    // Cross-process filesystem atomic lock (guards separate Node processes)
+    const lockPath = path.join(path.dirname(FOOD_DB_FILE), 'settlement_operation.lock');
+    let fileLockAcquired = false;
+    for (let attempts = 0; attempts < 30; attempts++) {
+      try {
+        const fd = fs.openSync(lockPath, 'wx');
+        fs.writeSync(fd, `${process.pid}:${Date.now()}`);
+        fs.closeSync(fd);
+        fileLockAcquired = true;
+        break;
+      } catch (err: any) {
+        if (err.code === 'EEXIST') {
+          try {
+            const stats = fs.statSync(lockPath);
+            if (Date.now() - stats.mtimeMs > 15000) {
+              fs.unlinkSync(lockPath);
+              continue;
+            }
+          } catch {
+            // lock file was freed concurrently
+          }
+          await new Promise(r => setTimeout(r, 100));
+        } else {
+          break;
         }
       }
     }
 
-    this.data.settlements.unshift(newSettlement);
-    this.save();
-    this.log(userId, `Created settlement of Rp ${newSettlement.amountToPay.toLocaleString()} for ${newSettlement.merchantName}`, 'ADMIN');
+    try {
+      return await fn();
+    } finally {
+      if (fileLockAcquired) {
+        try {
+          fs.unlinkSync(lockPath);
+        } catch {}
+      }
+      release!();
+    }
+  }
 
-    safeFirestoreSetDoc('settlements', newSettlement.id, newSettlement);
-    return newSettlement;
+  public async createSettlement(
+    userId: string,
+    settlementData: { merchantId: string; orderIds?: string[] } & Partial<Settlement>
+  ): Promise<Settlement> {
+    return this.runWithSettlementLock(async () => {
+      const targetOrderIds = settlementData.orderIds || [];
+      if (!Array.isArray(targetOrderIds) || targetOrderIds.length === 0) {
+        throw new Error('Settlement wajib menyertakan setidaknya satu ID pesanan yang memenuhi syarat.');
+      }
+
+      // Check merchant existence
+      const merchant = this.data.merchants.find(m => m.id === settlementData.merchantId);
+      if (!merchant) {
+        throw new Error(`Merchant dengan ID "${settlementData.merchantId}" tidak ditemukan.`);
+      }
+
+      // 1. ATOMIC VALIDATION: Local state check
+      const verifiedOrders: Order[] = [];
+      for (const ordId of targetOrderIds) {
+        const ord = this.data.orders.find(o => o.id === ordId);
+        if (!ord) {
+          throw new Error(`Pesanan "${ordId}" tidak ditemukan dalam database.`);
+        }
+        if (ord.merchantId !== settlementData.merchantId) {
+          throw new Error(`Pesanan "${ordId}" bukan milik merchant ${settlementData.merchantId}.`);
+        }
+        if (ord.status !== OrderStatus.COMPLETED) {
+          throw new Error(`Pesanan "${ordId}" belum selesai (status: ${ord.status}). Hanya pesanan COMPLETED yang dapat dicairkan.`);
+        }
+        if ((ord as any).isSettled === true || (ord as any).settlementId) {
+          throw new Error(`Pesanan "${ordId}" sudah pernah dicairkan dalam settlement sebelumnya. Pencairan ganda dicegah secara atomik.`);
+        }
+        verifiedOrders.push(ord);
+      }
+
+      // 2. AUTHORITATIVE SERVER-SIDE RECALCULATION
+      const orderCount = verifiedOrders.length;
+      const totalSales = verifiedOrders.reduce((sum, o) => sum + (Number(o.subtotal) || 0), 0);
+      const commissionPercent = this.data.systemConfig.commissionPercent || 10;
+      const totalCommission = Math.round((totalSales * commissionPercent) / 100);
+      const amountToPay = Math.max(0, totalSales - totalCommission);
+
+      const settlementId = 'set_' + Math.random().toString(36).substring(2, 9);
+      const nowIso = new Date().toISOString();
+
+      const newSettlement: Settlement = {
+        id: settlementId,
+        merchantId: merchant.id,
+        merchantName: merchant.name,
+        orderCount,
+        totalSales,
+        totalCommission,
+        amountToPay,
+        status: settlementData.status || SettlementStatus.WAITING_CONFIRMATION,
+        bankName: settlementData.bankName || merchant.bankName || 'Bank Mandiri',
+        bankAccount: settlementData.bankAccount || merchant.bankAccount || '-',
+        bankHolder: settlementData.bankHolder || merchant.bankHolder || merchant.ownerName,
+        createdAt: nowIso
+      };
+
+      // 3. DISTRIBUTED CLOUD TRANSACTION (Cross-instance & cross-container ACID isolation)
+      const adminDb = getAdminDb();
+      if (adminDb) {
+        try {
+          await runAdminTransaction(async (transaction) => {
+            // Transactional Read: verify no order is settled in remote cloud Firestore
+            for (const ordId of targetOrderIds) {
+              const orderRef = adminDb.collection('orders').doc(ordId);
+              const remoteSnap = await transaction.get(orderRef);
+              if (remoteSnap.exists) {
+                const remoteData = remoteSnap.data();
+                if (remoteData?.isSettled === true || remoteData?.settlementId) {
+                  throw new Error(`Pesanan "${ordId}" telah dicairkan oleh instance backend lain. Pencairan ganda lintas-instance dicegah secara atomik.`);
+                }
+              }
+            }
+
+            // Transactional Write: update orders
+            for (const ord of verifiedOrders) {
+              const orderRef = adminDb.collection('orders').doc(ord.id);
+              transaction.set(orderRef, removeUndefinedFields({
+                ...ord,
+                isSettled: true,
+                settlementId: settlementId,
+                settledAt: nowIso,
+                updatedAt: nowIso
+              }), { merge: true });
+            }
+
+            // Transactional Write: create settlement document
+            const settlementRef = adminDb.collection('settlements').doc(newSettlement.id);
+            transaction.set(settlementRef, removeUndefinedFields(newSettlement));
+          });
+        } catch (txErr: any) {
+          if (txErr.message && txErr.message.includes('telah dicairkan')) {
+            throw txErr;
+          }
+          console.warn('[TumpangFood DB] Distributed Firestore Admin transaction fallback:', txErr.message);
+        }
+      }
+
+      // 4. LOCAL COMMIT: Mark all orders as settled and attach settlementId
+      for (const ord of verifiedOrders) {
+        (ord as any).isSettled = true;
+        (ord as any).settlementId = settlementId;
+        (ord as any).settledAt = nowIso;
+        (ord as any).updatedAt = nowIso;
+        safeFirestoreSetDoc('orders', ord.id, ord);
+      }
+
+      this.data.settlements.unshift(newSettlement);
+      this.save();
+      this.createBackup();
+
+      this.log(
+        userId,
+        `Created settlement ${settlementId} of Rp ${amountToPay.toLocaleString()} for ${merchant.name} (${orderCount} pesanan)`,
+        'ADMIN'
+      );
+
+      safeFirestoreSetDoc('settlements', newSettlement.id, newSettlement);
+      return newSettlement;
+    });
   }
 
   public updateSettlement(userId: string, id: string, updates: Partial<Settlement>): Settlement {
@@ -815,6 +1106,7 @@ export class FoodDatabase {
       paidAt: updates.status === SettlementStatus.SETTLEMENT_COMPLETED ? new Date().toISOString() : this.data.settlements[index].paidAt
     };
     this.save();
+    this.createBackup();
     this.log(userId, `Updated settlement ${id} to status ${this.data.settlements[index].status}`, 'ADMIN');
 
     safeFirestoreSetDoc('settlements', id, this.data.settlements[index]);
@@ -825,46 +1117,100 @@ export class FoodDatabase {
     return this.updateSettlement(userId, id, { status: SettlementStatus.SETTLEMENT_COMPLETED });
   }
 
-  public generateHPlusOneSettlements(userId: string): Settlement[] {
-    const targetOrders = this.data.orders.filter(o => o.status === OrderStatus.COMPLETED && !(o as any).isSettled);
-    if (targetOrders.length === 0) return [];
+  public async generateHPlusOneSettlements(userId: string): Promise<Settlement[]> {
+    return this.runWithSettlementLock(async () => {
+      // Filter orders strictly completed and not yet settled
+      const targetOrders = this.data.orders.filter(
+        o => o.status === OrderStatus.COMPLETED && !(o as any).isSettled && !(o as any).settlementId
+      );
+      if (targetOrders.length === 0) return [];
 
-    const grouped = new Map<string, Order[]>();
-    for (const o of targetOrders) {
-      const list = grouped.get(o.merchantId) || [];
-      list.push(o);
-      grouped.set(o.merchantId, list);
-    }
+      const grouped = new Map<string, Order[]>();
+      for (const o of targetOrders) {
+        const list = grouped.get(o.merchantId) || [];
+        list.push(o);
+        grouped.set(o.merchantId, list);
+      }
 
-    const createdSettlements: Settlement[] = [];
-    const commissionPercent = this.data.systemConfig.commissionPercent || 10;
+      const createdSettlements: Settlement[] = [];
+      const commissionPercent = this.data.systemConfig.commissionPercent || 10;
+      const nowIso = new Date().toISOString();
 
-    for (const [merchantId, orders] of grouped.entries()) {
-      const merchant = this.getMerchantById(merchantId);
-      if (!merchant) continue;
+      for (const [merchantId, orders] of grouped.entries()) {
+        const merchant = this.data.merchants.find(m => m.id === merchantId);
+        if (!merchant) continue;
 
-      const orderCount = orders.length;
-      const totalSales = orders.reduce((sum, o) => sum + (Number(o.subtotal) || 0), 0);
-      const totalCommission = Math.round((totalSales * commissionPercent) / 100);
-      const amountToPay = totalSales - totalCommission;
+        const orderCount = orders.length;
+        const totalSales = orders.reduce((sum, o) => sum + (Number(o.subtotal) || 0), 0);
+        const totalCommission = Math.round((totalSales * commissionPercent) / 100);
+        const amountToPay = Math.max(0, totalSales - totalCommission);
 
-      const settlement = this.createSettlement(userId, {
-        merchantId,
-        merchantName: merchant.name,
-        orderCount,
-        totalSales,
-        totalCommission,
-        amountToPay,
-        status: SettlementStatus.WAITING_CONFIRMATION,
-        bankName: merchant.bankName,
-        bankAccount: merchant.bankAccount,
-        bankHolder: merchant.bankHolder,
-        orderIds: orders.map(o => o.id)
-      });
-      createdSettlements.push(settlement);
-    }
+        const settlementId = 'set_' + Math.random().toString(36).substring(2, 9);
+        const newSettlement: Settlement = {
+          id: settlementId,
+          merchantId,
+          merchantName: merchant.name,
+          orderCount,
+          totalSales,
+          totalCommission,
+          amountToPay,
+          status: SettlementStatus.WAITING_CONFIRMATION,
+          bankName: merchant.bankName || 'Bank Mandiri',
+          bankAccount: merchant.bankAccount || '-',
+          bankHolder: merchant.bankHolder || merchant.ownerName,
+          createdAt: nowIso
+        };
 
-    return createdSettlements;
+        const adminDb = getAdminDb();
+        if (adminDb) {
+          try {
+            await runAdminTransaction(async (transaction) => {
+              for (const o of orders) {
+                const orderRef = adminDb.collection('orders').doc(o.id);
+                const snap = await transaction.get(orderRef);
+                if (snap.exists) {
+                  const data = snap.data();
+                  if (data?.isSettled === true || data?.settlementId) {
+                    throw new Error(`Order ${o.id} already settled.`);
+                  }
+                }
+              }
+              for (const o of orders) {
+                const orderRef = adminDb.collection('orders').doc(o.id);
+                transaction.set(orderRef, removeUndefinedFields({
+                  ...o,
+                  isSettled: true,
+                  settlementId,
+                  settledAt: nowIso,
+                  updatedAt: nowIso
+                }), { merge: true });
+              }
+              const settlementRef = adminDb.collection('settlements').doc(newSettlement.id);
+              transaction.set(settlementRef, removeUndefinedFields(newSettlement));
+            });
+          } catch (txErr: any) {
+            console.warn(`[TumpangFood DB] H+1 atomic transaction fallback for ${merchantId}:`, txErr.message);
+          }
+        }
+
+        for (const o of orders) {
+          (o as any).isSettled = true;
+          (o as any).settlementId = settlementId;
+          (o as any).settledAt = nowIso;
+          (o as any).updatedAt = nowIso;
+          safeFirestoreSetDoc('orders', o.id, o);
+        }
+
+        this.data.settlements.unshift(newSettlement);
+        safeFirestoreSetDoc('settlements', newSettlement.id, newSettlement);
+        createdSettlements.push(newSettlement);
+      }
+
+      this.save();
+      this.createBackup();
+      this.log(userId, `Generated H+1 settlements for ${createdSettlements.length} merchants`, 'ADMIN');
+      return createdSettlements;
+    });
   }
 
   // --- PARTNER REGISTRATIONS ---

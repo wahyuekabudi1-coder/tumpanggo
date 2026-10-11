@@ -4,6 +4,7 @@
  * 
  * Tumpang Food Authentication Routes
  * Handles secure user login, token issuance, and partner onboarding.
+ * Strictly enforces valid credentials with PBKDF2 hashing and no fallback bypasses.
  */
 
 import { Router, Request, Response } from 'express';
@@ -21,20 +22,6 @@ authRouter.post('/login', (req: Request, res: Response) => {
   const { username, password, role } = req.body;
 
   if (!username || !password) {
-    // Backwards-compatibility for demo mode quick login button
-    if (role === 'ADMIN' && req.body.demo === true) {
-      const adminToken = createAuthToken({
-        userId: 'admin',
-        role: 'ADMIN',
-        email: foodConfig.adminEmail
-      });
-      foodDb.log('admin', 'Admin logged in via Demo mode', 'ADMIN');
-      return res.json({
-        token: adminToken,
-        role: 'ADMIN',
-        user: { id: 'admin', name: 'Administrator Tumpang Go', username: foodConfig.adminEmail }
-      });
-    }
     return res.status(400).json({ error: 'Username/Email dan kata sandi wajib diisi.' });
   }
 
@@ -44,7 +31,7 @@ authRouter.post('/login', (req: Request, res: Response) => {
   // 1. ADMIN LOGIN
   if (role === 'ADMIN') {
     const isTargetAdmin = isAdminEmail(cleanUser);
-    const isValidAdminPass = cleanPass === foodConfig.adminPassword || cleanPass === 'admin123' || cleanPass === 'admin';
+    const isValidAdminPass = cleanPass === foodConfig.adminPassword;
 
     if (!isTargetAdmin || !isValidAdminPass) {
       return res.status(401).json({ error: 'Email atau kata sandi Administrator salah.' });
@@ -71,24 +58,15 @@ authRouter.post('/login', (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Email atau No. Telepon ini tidak terdaftar sebagai Merchant Toko.' });
     }
 
-    // Verify hashed password
     let isPasswordValid = false;
     if (merchant.password) {
       const { valid, needsRehash } = verifyPassword(cleanPass, merchant.password);
       isPasswordValid = valid;
       if (needsRehash) {
-        // Upgrade legacy plaintext password to secure salted hash
         foodDb.updateMerchant('SYSTEM', merchant.id, { password: hashPassword(cleanPass) }, 'MERCHANT');
       }
-    }
-
-    // Fallback for initial demo seed accounts (e.g. m1123, 123456)
-    if (!isPasswordValid) {
-      const defaultPass = merchant.id + '123';
-      if (cleanPass === defaultPass || cleanPass === '123456' || cleanPass === 'merchant123') {
-        isPasswordValid = true;
-        foodDb.updateMerchant('SYSTEM', merchant.id, { password: hashPassword(cleanPass) }, 'MERCHANT');
-      }
+    } else {
+      return res.status(401).json({ error: 'Akun toko belum memiliki kata sandi aktif. Silakan lakukan aktivasi akun terlebih dahulu.' });
     }
 
     if (!isPasswordValid) {
@@ -117,11 +95,18 @@ authRouter.post('/login', (req: Request, res: Response) => {
       return res.status(401).json({ error: 'No. WhatsApp atau Email ini tidak terdaftar sebagai Driver / Kurir.' });
     }
 
-    // Allow standard driver credentials
-    const expectedPass = driver.id + '123';
-    const isValidPass = cleanPass === expectedPass || cleanPass === '123456' || cleanPass === 'driver123';
+    let isDriverPassValid = false;
+    if ((driver as any).password) {
+      const { valid, needsRehash } = verifyPassword(cleanPass, (driver as any).password);
+      isDriverPassValid = valid;
+      if (needsRehash) {
+        foodDb.updateDriver('SYSTEM', driver.id, { password: hashPassword(cleanPass) } as any, 'DRIVER');
+      }
+    } else {
+      return res.status(401).json({ error: 'Akun driver belum memiliki kata sandi aktif. Silakan hubungi admin untuk aktivasi.' });
+    }
 
-    if (!isValidPass) {
+    if (!isDriverPassValid) {
       return res.status(401).json({ error: 'Kata sandi driver salah. Silakan periksa kembali.' });
     }
 

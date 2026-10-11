@@ -24,9 +24,10 @@ merchantRouter.get('/:id', (req: Request, res: Response) => {
 });
 
 merchantRouter.post('/', requireRole(['ADMIN']), (req: Request, res: Response) => {
-  const { userId, ...merchantData } = req.body;
+  const merchantData = req.body;
   try {
-    const created = foodDb.createMerchant(userId || 'admin', merchantData);
+    const actorId = req.user?.userId || 'admin';
+    const created = foodDb.createMerchant(actorId, merchantData);
     res.status(201).json(created);
   } catch (e: any) {
     res.status(400).json({ error: e.message });
@@ -34,9 +35,13 @@ merchantRouter.post('/', requireRole(['ADMIN']), (req: Request, res: Response) =
 });
 
 merchantRouter.put('/:id', requireMerchantOwner('id'), (req: Request, res: Response) => {
-  const { userId, role, ...updates } = req.body;
+  const updates = { ...req.body };
+  // Do not allow changing store ID
+  delete updates.id;
   try {
-    const updated = foodDb.updateMerchant(userId || req.params.id, req.params.id, updates, role || 'MERCHANT');
+    const actorId = req.user?.userId || req.user?.entityId || req.params.id;
+    const actorRole = (req.user?.role === 'ADMIN' ? 'ADMIN' : 'MERCHANT') as 'ADMIN' | 'MERCHANT';
+    const updated = foodDb.updateMerchant(actorId, req.params.id, updates, actorRole);
     res.json(updated);
   } catch (e: any) {
     res.status(400).json({ error: e.message });
@@ -44,8 +49,8 @@ merchantRouter.put('/:id', requireMerchantOwner('id'), (req: Request, res: Respo
 });
 
 merchantRouter.delete('/:id', requireRole(['ADMIN']), (req: Request, res: Response) => {
-  const { userId } = req.body;
-  const success = foodDb.deleteMerchant(userId || 'admin', req.params.id);
+  const actorId = req.user?.userId || 'admin';
+  const success = foodDb.deleteMerchant(actorId, req.params.id);
   if (success) res.json({ success: true });
   else res.status(404).json({ error: 'Merchant not found' });
 });
@@ -117,11 +122,11 @@ merchantRouter.delete('/:merchantId/menu/:id', requireMerchantOwner('merchantId'
 });
 
 // --- ORDERS & SETTLEMENTS ---
-merchantRouter.get('/:merchantId/orders', (req: Request, res: Response) => {
+merchantRouter.get('/:merchantId/orders', requireMerchantOwner('merchantId'), (req: Request, res: Response) => {
   res.json(foodDb.getOrdersByMerchant(req.params.merchantId));
 });
 
-merchantRouter.get('/:merchantId/settlements', (req: Request, res: Response) => {
+merchantRouter.get('/:merchantId/settlements', requireMerchantOwner('merchantId'), (req: Request, res: Response) => {
   res.json(foodDb.getSettlementsByMerchant(req.params.merchantId));
 });
 
