@@ -1,9 +1,42 @@
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
 // src/server/app.ts
-import express from "express";
+var app_exports = {};
+__export(app_exports, {
+  app: () => app
+});
+module.exports = __toCommonJS(app_exports);
+var import_express6 = __toESM(require("express"), 1);
 
 // src/server/db.ts
-import fs3 from "fs";
-import path3 from "path";
+var import_fs3 = __toESM(require("fs"), 1);
+var import_path3 = __toESM(require("path"), 1);
 
 // src/types.ts
 function calculateTieredServiceFee(subtotal) {
@@ -15,20 +48,20 @@ function calculateTieredServiceFee(subtotal) {
 }
 
 // src/server/config.ts
-import fs from "fs";
-import path from "path";
-import crypto from "crypto";
-import dotenv from "dotenv";
-dotenv.config();
+var import_fs = __toESM(require("fs"), 1);
+var import_path = __toESM(require("path"), 1);
+var import_crypto = __toESM(require("crypto"), 1);
+var import_dotenv = __toESM(require("dotenv"), 1);
+import_dotenv.default.config();
 var runtimeJwtSecret = process.env.FOOD_AUTH_SECRET;
 if (!runtimeJwtSecret || runtimeJwtSecret.trim().length < 32) {
   if (process.env.NODE_ENV === "production") {
     console.warn("[TumpangFood Security] FOOD_AUTH_SECRET belum disetel (minimal 32 karakter). Menggunakan kunci aman kriptografi sementara.");
   }
-  runtimeJwtSecret = crypto.randomBytes(32).toString("hex");
+  runtimeJwtSecret = import_crypto.default.randomBytes(32).toString("hex");
 }
 var isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
-var localDbFile = isServerless ? path.join("/tmp", "tumpang_food_db.json") : path.join(process.cwd(), "tumpang_food_db.json");
+var localDbFile = isServerless ? import_path.default.join("/tmp", "tumpang_food_db.json") : import_path.default.join(process.cwd(), "tumpang_food_db.json");
 var runtimeAdminPassword = process.env.FOOD_ADMIN_PASSWORD || "TumpangGoAdmin#2026";
 var runtimeAdminEmail = process.env.FOOD_ADMIN_EMAIL || "tumpanggo@gmail.com";
 function validateProductionEnvironment() {
@@ -62,8 +95,8 @@ function validateProductionEnvironment() {
       }
       if (cleanRaw.startsWith("{")) {
         parsed = JSON.parse(cleanRaw);
-      } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS && fs.existsSync(raw)) {
-        parsed = JSON.parse(fs.readFileSync(raw, "utf-8"));
+      } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS && import_fs.default.existsSync(raw)) {
+        parsed = JSON.parse(import_fs.default.readFileSync(raw, "utf-8"));
       } else {
         const decoded = Buffer.from(cleanRaw, "base64").toString("utf-8");
         if (decoded.trim().startsWith("{")) {
@@ -103,7 +136,7 @@ var foodConfig = {
   // Database settings
   databaseId: process.env.FOOD_DATABASE_ID || "ai-studio-tumpangfood-99caef89-a69c-4fe1-80be-2c79f3dcb85c",
   localDbFile,
-  legacyDbFile: path.join(process.cwd(), "tumpang_db.json"),
+  legacyDbFile: import_path.default.join(process.cwd(), "tumpang_db.json"),
   // Security & Authentication
   jwtSecret: runtimeJwtSecret || "dev_secret_fallback_do_not_use_in_prod",
   adminEmail: runtimeAdminEmail.toLowerCase(),
@@ -120,11 +153,11 @@ var foodConfig = {
 };
 
 // src/server/auth.ts
-import crypto2 from "crypto";
+var import_crypto2 = __toESM(require("crypto"), 1);
 function hashPassword(password) {
-  const salt = crypto2.randomBytes(16).toString("hex");
+  const salt = import_crypto2.default.randomBytes(16).toString("hex");
   const iterations = 1e4;
-  const hash = crypto2.pbkdf2Sync(password, salt, iterations, 64, "sha512").toString("hex");
+  const hash = import_crypto2.default.pbkdf2Sync(password, salt, iterations, 64, "sha512").toString("hex");
   return `pbkdf2$${iterations}$${salt}$${hash}`;
 }
 function verifyPassword(password, storedHash) {
@@ -135,8 +168,8 @@ function verifyPassword(password, storedHash) {
     const iterations = parseInt(parts[1], 10);
     const salt = parts[2];
     const originalHash = parts[3];
-    const derived = crypto2.pbkdf2Sync(password, salt, iterations, 64, "sha512").toString("hex");
-    const valid2 = crypto2.timingSafeEqual(Buffer.from(derived, "hex"), Buffer.from(originalHash, "hex"));
+    const derived = import_crypto2.default.pbkdf2Sync(password, salt, iterations, 64, "sha512").toString("hex");
+    const valid2 = import_crypto2.default.timingSafeEqual(Buffer.from(derived, "hex"), Buffer.from(originalHash, "hex"));
     return { valid: valid2, needsRehash: false };
   }
   const valid = password.trim() === storedHash.trim();
@@ -150,7 +183,7 @@ function createAuthToken(user, expiresInHours = 72) {
       exp: Math.floor(Date.now() / 1e3) + expiresInHours * 3600
     })
   ).toString("base64url");
-  const signature = crypto2.createHmac("sha256", foodConfig.jwtSecret).update(`${header}.${payload}`).digest("base64url");
+  const signature = import_crypto2.default.createHmac("sha256", foodConfig.jwtSecret).update(`${header}.${payload}`).digest("base64url");
   return `${header}.${payload}.${signature}`;
 }
 function verifyAuthToken(token) {
@@ -159,8 +192,8 @@ function verifyAuthToken(token) {
     const parts = token.split(".");
     if (parts.length !== 3) return null;
     const [header, payload, signature] = parts;
-    const expectedSig = crypto2.createHmac("sha256", foodConfig.jwtSecret).update(`${header}.${payload}`).digest("base64url");
-    if (!crypto2.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig))) {
+    const expectedSig = import_crypto2.default.createHmac("sha256", foodConfig.jwtSecret).update(`${header}.${payload}`).digest("base64url");
+    if (!import_crypto2.default.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig))) {
       return null;
     }
     const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf-8"));
@@ -399,11 +432,11 @@ var OrderService = class {
 };
 
 // src/server/firebaseAdmin.ts
-import fs2 from "fs";
-import path2 from "path";
-import * as admin from "firebase-admin";
-import { initializeApp as initializeApp2, getApps as getApps2, cert as cert2 } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+var import_fs2 = __toESM(require("fs"), 1);
+var import_path2 = __toESM(require("path"), 1);
+var admin = __toESM(require("firebase-admin"), 1);
+var import_app = require("firebase-admin/app");
+var import_firestore = require("firebase-admin/firestore");
 var adminApp = null;
 var adminDb = null;
 var isConfiguredWithServiceAccount = false;
@@ -423,10 +456,10 @@ function removeUndefinedFields(obj) {
 function initFirebaseAdmin(serviceAccountOverride) {
   try {
     let projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCP_PROJECT;
-    const configPath = path2.join(process.cwd(), "firebase-applet-config.json");
-    if (!projectId && fs2.existsSync(configPath)) {
+    const configPath = import_path2.default.join(process.cwd(), "firebase-applet-config.json");
+    if (!projectId && import_fs2.default.existsSync(configPath)) {
       try {
-        const raw = JSON.parse(fs2.readFileSync(configPath, "utf-8"));
+        const raw = JSON.parse(import_fs2.default.readFileSync(configPath, "utf-8"));
         if (raw.projectId) {
           projectId = raw.projectId;
         }
@@ -439,9 +472,9 @@ function initFirebaseAdmin(serviceAccountOverride) {
     let credentialOption = void 0;
     isConfiguredWithServiceAccount = false;
     activeClientEmailMasked = null;
-    const certFn = cert2 || admin.cert || admin.credential?.cert;
-    const initAppFn = initializeApp2 || admin.initializeApp;
-    const getAppsFn = getApps2 || admin.getApps;
+    const certFn = import_app.cert || admin.cert || admin.credential?.cert;
+    const initAppFn = import_app.initializeApp || admin.initializeApp;
+    const getAppsFn = import_app.getApps || admin.getApps;
     if (rawInput.length > 0) {
       try {
         let cleanRaw = rawInput;
@@ -489,9 +522,9 @@ function initFirebaseAdmin(serviceAccountOverride) {
       } catch (err) {
         console.error("[TumpangFood Admin] Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:", err.message);
       }
-    } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS && fs2.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
+    } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS && import_fs2.default.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
       try {
-        const fileContent = fs2.readFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS, "utf-8");
+        const fileContent = import_fs2.default.readFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS, "utf-8");
         const parsed = JSON.parse(fileContent);
         if (parsed.private_key && typeof parsed.private_key === "string") {
           parsed.private_key = parsed.private_key.replace(/\\n/g, "\n");
@@ -522,7 +555,7 @@ function initFirebaseAdmin(serviceAccountOverride) {
     } else {
       adminApp = currentApps[0];
     }
-    const getFirestoreFn = getFirestore || admin.firestore;
+    const getFirestoreFn = import_firestore.getFirestore || admin.firestore;
     if (typeof getFirestoreFn === "function" && adminApp) {
       adminDb = getFirestoreFn(adminApp, foodConfig.databaseId);
     }
@@ -564,19 +597,29 @@ async function testFirestoreConnection() {
     };
   }
   const probeRef = adminDb.collection("_systemConnectionProbe").doc(probeId);
+  const withTimeout = (p, ms = 2500, label = "Operation") => {
+    return Promise.race([
+      p,
+      new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms))
+    ]);
+  };
   try {
-    await probeRef.set({
-      ping: true,
-      timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-      probeOrigin: "TumpangFood Health Check"
-    });
+    await withTimeout(
+      probeRef.set({
+        ping: true,
+        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+        probeOrigin: "TumpangFood Health Check"
+      }),
+      2500,
+      "Firestore write probe"
+    );
     canWrite = true;
   } catch (err) {
     probeError = err.message || String(err);
   }
   if (canWrite) {
     try {
-      const snap = await probeRef.get();
+      const snap = await withTimeout(probeRef.get(), 2e3, "Firestore read probe");
       canRead = snap.exists;
       await probeRef.delete().catch(() => {
       });
@@ -585,7 +628,7 @@ async function testFirestoreConnection() {
     }
   } else {
     try {
-      const snap = await adminDb.collection("systemConfig").doc("config_1").get();
+      const snap = await withTimeout(adminDb.collection("systemConfig").doc("config_1").get(), 2e3, "Firestore fallback read");
       canRead = snap.exists;
     } catch (err) {
       probeError = err.message || String(err);
@@ -724,7 +767,7 @@ var FoodDatabase = class {
   createBackup() {
     try {
       const backupPath = FOOD_DB_FILE + ".backup.json";
-      fs3.writeFileSync(backupPath, JSON.stringify(this.data, null, 2), "utf-8");
+      import_fs3.default.writeFileSync(backupPath, JSON.stringify(this.data, null, 2), "utf-8");
       return true;
     } catch {
       return false;
@@ -736,8 +779,8 @@ var FoodDatabase = class {
   loadAndMigrate() {
     const backupPath = FOOD_DB_FILE + ".backup.json";
     try {
-      if (fs3.existsSync(FOOD_DB_FILE)) {
-        const content = fs3.readFileSync(FOOD_DB_FILE, "utf-8");
+      if (import_fs3.default.existsSync(FOOD_DB_FILE)) {
+        const content = import_fs3.default.readFileSync(FOOD_DB_FILE, "utf-8");
         if (content && content.trim().length > 10) {
           this.data = JSON.parse(content);
           this.ensureStructure();
@@ -747,18 +790,35 @@ var FoodDatabase = class {
           return;
         }
       }
-      if (fs3.existsSync(backupPath)) {
+      const bundledSeedFile = import_path3.default.join(process.cwd(), "tumpang_food_db.json");
+      if (FOOD_DB_FILE !== bundledSeedFile && import_fs3.default.existsSync(bundledSeedFile)) {
+        try {
+          const seedContent = import_fs3.default.readFileSync(bundledSeedFile, "utf-8");
+          if (seedContent && seedContent.trim().length > 10) {
+            this.data = JSON.parse(seedContent);
+            this.ensureStructure();
+            this.migratePasswords();
+            this.save();
+            this.createBackup();
+            console.log("[TumpangFood DB] Successfully bootstrapped serverless database from bundled tumpang_food_db.json");
+            return;
+          }
+        } catch (e) {
+          console.warn("[TumpangFood DB] Failed reading bundled seed database:", e.message);
+        }
+      }
+      if (import_fs3.default.existsSync(backupPath)) {
         console.warn("[TumpangFood DB] Primary database corrupted or empty. Recovering from backup snapshot...");
-        const backupContent = fs3.readFileSync(backupPath, "utf-8");
+        const backupContent = import_fs3.default.readFileSync(backupPath, "utf-8");
         this.data = JSON.parse(backupContent);
         this.ensureStructure();
         this.save();
         console.log("[TumpangFood DB] Recovery from backup successful.");
         return;
       }
-      if (fs3.existsSync(LEGACY_DB_FILE)) {
+      if (import_fs3.default.existsSync(LEGACY_DB_FILE)) {
         console.log("[TumpangFood DB] Migrating data from legacy tumpang_db.json...");
-        const legacyContent = fs3.readFileSync(LEGACY_DB_FILE, "utf-8");
+        const legacyContent = import_fs3.default.readFileSync(LEGACY_DB_FILE, "utf-8");
         this.data = JSON.parse(legacyContent);
         this.ensureStructure();
         this.migratePasswords();
@@ -772,9 +832,9 @@ var FoodDatabase = class {
       }
     } catch (err) {
       console.error("[TumpangFood DB] Error during load/migrate, attempting emergency recovery:", err);
-      if (fs3.existsSync(backupPath)) {
+      if (import_fs3.default.existsSync(backupPath)) {
         try {
-          this.data = JSON.parse(fs3.readFileSync(backupPath, "utf-8"));
+          this.data = JSON.parse(import_fs3.default.readFileSync(backupPath, "utf-8"));
           this.ensureStructure();
           this.save();
           return;
@@ -829,11 +889,11 @@ var FoodDatabase = class {
   }
   save() {
     try {
-      const dir = path3.dirname(FOOD_DB_FILE);
-      if (!fs3.existsSync(dir)) {
-        fs3.mkdirSync(dir, { recursive: true });
+      const dir = import_path3.default.dirname(FOOD_DB_FILE);
+      if (!import_fs3.default.existsSync(dir)) {
+        import_fs3.default.mkdirSync(dir, { recursive: true });
       }
-      fs3.writeFileSync(FOOD_DB_FILE, JSON.stringify(this.data, null, 2), "utf-8");
+      import_fs3.default.writeFileSync(FOOD_DB_FILE, JSON.stringify(this.data, null, 2), "utf-8");
     } catch (e) {
       if (e.code === "EROFS") {
         console.warn("[TumpangFood DB] Read-only filesystem detected. Disk write skipped; persisting in-memory and Firestore.");
@@ -890,11 +950,11 @@ var FoodDatabase = class {
       this.isInitialized = true;
       return;
     }
-    if (foodConfig.isProduction) {
-      const probe = await testFirestoreConnection();
-      if (!probe.connected) {
-        throw new Error(`[Produksi] Koneksi ke database Firestore "${foodConfig.databaseId}" pada proyek "${probe.projectId}" gagal (${probe.error}). Fallback ke JSON lokal dinonaktifkan pada lingkungan produksi.`);
-      }
+    const probe = await testFirestoreConnection();
+    if (!probe.connected) {
+      console.warn(`[TumpangFood DB] Firestore Cloud belum terhubung (${probe.diagnosticReason}: ${probe.error || probe.diagnosticDetail}). Melewati sinkronisasi remote koleksi.`);
+      this.isInitialized = true;
+      return;
     }
     this.isInitialized = true;
     try {
@@ -1599,21 +1659,21 @@ var FoodDatabase = class {
     const currentMutex = this.settlementMutex;
     this.settlementMutex = currentMutex.then(() => waitPromise).catch(() => waitPromise);
     await currentMutex;
-    const lockPath = path3.join(path3.dirname(FOOD_DB_FILE), "settlement_operation.lock");
+    const lockPath = import_path3.default.join(import_path3.default.dirname(FOOD_DB_FILE), "settlement_operation.lock");
     let fileLockAcquired = false;
     for (let attempts = 0; attempts < 30; attempts++) {
       try {
-        const fd = fs3.openSync(lockPath, "wx");
-        fs3.writeSync(fd, `${process.pid}:${Date.now()}`);
-        fs3.closeSync(fd);
+        const fd = import_fs3.default.openSync(lockPath, "wx");
+        import_fs3.default.writeSync(fd, `${process.pid}:${Date.now()}`);
+        import_fs3.default.closeSync(fd);
         fileLockAcquired = true;
         break;
       } catch (err) {
         if (err.code === "EEXIST") {
           try {
-            const stats = fs3.statSync(lockPath);
+            const stats = import_fs3.default.statSync(lockPath);
             if (Date.now() - stats.mtimeMs > 15e3) {
-              fs3.unlinkSync(lockPath);
+              import_fs3.default.unlinkSync(lockPath);
               continue;
             }
           } catch {
@@ -1629,7 +1689,7 @@ var FoodDatabase = class {
     } finally {
       if (fileLockAcquired) {
         try {
-          fs3.unlinkSync(lockPath);
+          import_fs3.default.unlinkSync(lockPath);
         } catch {
         }
       }
@@ -2067,8 +2127,8 @@ var FoodDatabase = class {
 var foodDb = new FoodDatabase();
 
 // src/server/routes/authRoutes.ts
-import { Router } from "express";
-var authRouter = Router();
+var import_express = require("express");
+var authRouter = (0, import_express.Router)();
 authRouter.post("/login", (req, res) => {
   const { username, password, role } = req.body;
   if (!username || !password) {
@@ -2229,8 +2289,8 @@ authRouter.post("/merchants/activate", async (req, res) => {
 });
 
 // src/server/routes/merchantRoutes.ts
-import { Router as Router2 } from "express";
-var merchantRouter = Router2();
+var import_express2 = require("express");
+var merchantRouter = (0, import_express2.Router)();
 merchantRouter.get("/", (req, res) => {
   res.json(foodDb.getMerchants());
 });
@@ -2355,8 +2415,8 @@ merchantRouter.post("/:id/redeem-license", requireMerchantOwner("id"), async (re
 });
 
 // src/server/routes/driverRoutes.ts
-import { Router as Router3 } from "express";
-var driverRouter = Router3();
+var import_express3 = require("express");
+var driverRouter = (0, import_express3.Router)();
 driverRouter.get("/", (req, res) => {
   const drivers = foodDb.getDrivers();
   const sanitized = drivers.map((d) => ({
@@ -2410,8 +2470,8 @@ driverRouter.get("/:driverId/orders", requireDriverSelf("driverId"), (req, res) 
 });
 
 // src/server/routes/orderRoutes.ts
-import { Router as Router4 } from "express";
-var orderRouter = Router4();
+var import_express4 = require("express");
+var orderRouter = (0, import_express4.Router)();
 orderRouter.get("/", (req, res) => {
   const user = req.user;
   if (!user) {
@@ -2643,8 +2703,8 @@ orderRouter.post("/:id/upload-delivery", requireRole(["DRIVER", "ADMIN"]), async
 });
 
 // src/server/routes/adminRoutes.ts
-import { Router as Router5 } from "express";
-var adminRouter = Router5();
+var import_express5 = require("express");
+var adminRouter = (0, import_express5.Router)();
 adminRouter.get("/config", (req, res) => {
   res.json(foodDb.getConfig());
 });
@@ -2752,9 +2812,9 @@ adminRouter.get("/logs", requireRole(["ADMIN"]), (req, res) => {
 });
 
 // src/server/app.ts
-var app = express();
-app.use(express.json({ limit: "15mb" }));
-app.use(express.urlencoded({ extended: true, limit: "15mb" }));
+var app = (0, import_express6.default)();
+app.use(import_express6.default.json({ limit: "15mb" }));
+app.use(import_express6.default.urlencoded({ extended: true, limit: "15mb" }));
 app.use(async (req, res, next) => {
   try {
     await foodDb.ensureInitialized();
@@ -2770,25 +2830,44 @@ app.use(async (req, res, next) => {
 });
 app.use(authenticateToken);
 app.get("/api/health", async (req, res) => {
-  const storageStatus = await foodDb.getStorageStatus();
-  const isHealthy = storageStatus.liveCloudConnected;
-  const isProd = foodConfig.isProduction;
-  res.status(isProd && !isHealthy ? 503 : 200).json({
-    status: isHealthy ? "healthy" : isProd ? "degraded_disconnected_from_cloud" : "ok_development_resilient_mode",
-    system: "tumpang-food",
-    environment: process.env.NODE_ENV || "development",
-    database: storageStatus,
-    timestamp: (/* @__PURE__ */ new Date()).toISOString()
-  });
+  try {
+    const storageStatus = await foodDb.getStorageStatus();
+    const isHealthy = storageStatus.liveCloudConnected;
+    const isProd = foodConfig.isProduction;
+    res.status(isProd && !isHealthy ? 503 : 200).json({
+      status: isHealthy ? "healthy" : isProd ? "degraded_disconnected_from_cloud" : "ok_development_resilient_mode",
+      system: "tumpang-food",
+      environment: process.env.NODE_ENV || "development",
+      database: storageStatus,
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    });
+  } catch (err) {
+    console.error("[TumpangFood Health Check Error]", err);
+    res.status(500).json({
+      status: "error",
+      system: "tumpang-food",
+      error: err.message || "Health check error",
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    });
+  }
 });
 app.get("/api/health/firestore-probe", async (req, res) => {
-  const probe = await testFirestoreConnection();
-  res.status(probe.connected ? 200 : 503).json({
-    system: "tumpang-food",
-    probeOrigin: "Dedicated Admin SDK Diagnostic Probe",
-    result: probe,
-    timestamp: (/* @__PURE__ */ new Date()).toISOString()
-  });
+  try {
+    const probe = await testFirestoreConnection();
+    res.status(probe.connected ? 200 : 503).json({
+      system: "tumpang-food",
+      probeOrigin: "Dedicated Admin SDK Diagnostic Probe",
+      result: probe,
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    });
+  } catch (err) {
+    console.error("[TumpangFood Probe Error]", err);
+    res.status(500).json({
+      system: "tumpang-food",
+      error: err.message || "Diagnostic probe error",
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    });
+  }
 });
 app.use("/api", authRouter);
 app.use("/api/merchants", merchantRouter);
@@ -2801,12 +2880,10 @@ app.use((err, req, res, next) => {
     error: err.message || "Terjadi kesalahan internal pada server Tumpang Food."
   });
 });
-
-// api/index.ts
-var index_default = app;
-export {
-  index_default as default
-};
+// Annotate the CommonJS export names for ESM import in node:
+0 && (module.exports = {
+  app
+});
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -2889,10 +2966,4 @@ export {
  * Tumpang Food Express Application
  * Decoupled and modular backend application assembly.
  */
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- * 
- * Vercel Serverless Function Entry Point for Tumpang Food API
- * Directly exports the Express application without Vite or development server dependencies.
- */
+//# sourceMappingURL=_app.cjs.map

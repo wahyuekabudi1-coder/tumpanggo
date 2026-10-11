@@ -43,28 +43,47 @@ app.use(authenticateToken);
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
-  const storageStatus = await foodDb.getStorageStatus();
-  const isHealthy = storageStatus.liveCloudConnected;
-  const isProd = foodConfig.isProduction;
+  try {
+    const storageStatus = await foodDb.getStorageStatus();
+    const isHealthy = storageStatus.liveCloudConnected;
+    const isProd = foodConfig.isProduction;
 
-  res.status(isProd && !isHealthy ? 503 : 200).json({
-    status: isHealthy ? 'healthy' : (isProd ? 'degraded_disconnected_from_cloud' : 'ok_development_resilient_mode'),
-    system: 'tumpang-food',
-    environment: process.env.NODE_ENV || 'development',
-    database: storageStatus,
-    timestamp: new Date().toISOString()
-  });
+    res.status(isProd && !isHealthy ? 503 : 200).json({
+      status: isHealthy ? 'healthy' : (isProd ? 'degraded_disconnected_from_cloud' : 'ok_development_resilient_mode'),
+      system: 'tumpang-food',
+      environment: process.env.NODE_ENV || 'development',
+      database: storageStatus,
+      timestamp: new Date().toISOString()
+    });
+  } catch (err: any) {
+    console.error('[TumpangFood Health Check Error]', err);
+    res.status(500).json({
+      status: 'error',
+      system: 'tumpang-food',
+      error: err.message || 'Health check error',
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Dedicated Firestore Connection Probe endpoint for on-demand validation
 app.get('/api/health/firestore-probe', async (req, res) => {
-  const probe = await testFirestoreConnection();
-  res.status(probe.connected ? 200 : 503).json({
-    system: 'tumpang-food',
-    probeOrigin: 'Dedicated Admin SDK Diagnostic Probe',
-    result: probe,
-    timestamp: new Date().toISOString()
-  });
+  try {
+    const probe = await testFirestoreConnection();
+    res.status(probe.connected ? 200 : 503).json({
+      system: 'tumpang-food',
+      probeOrigin: 'Dedicated Admin SDK Diagnostic Probe',
+      result: probe,
+      timestamp: new Date().toISOString()
+    });
+  } catch (err: any) {
+    console.error('[TumpangFood Probe Error]', err);
+    res.status(500).json({
+      system: 'tumpang-food',
+      error: err.message || 'Diagnostic probe error',
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Mount decoupled routers

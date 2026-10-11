@@ -237,13 +237,24 @@ export async function testFirestoreConnection(): Promise<FirestoreProbeResult> {
 
   const probeRef = adminDb.collection('_systemConnectionProbe').doc(probeId);
 
+  const withTimeout = <T>(p: Promise<T>, ms = 2500, label = 'Operation'): Promise<T> => {
+    return Promise.race([
+      p,
+      new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms))
+    ]);
+  };
+
   // 1. Write Probe on dedicated test document
   try {
-    await probeRef.set({
-      ping: true,
-      timestamp: new Date().toISOString(),
-      probeOrigin: 'TumpangFood Health Check'
-    });
+    await withTimeout(
+      probeRef.set({
+        ping: true,
+        timestamp: new Date().toISOString(),
+        probeOrigin: 'TumpangFood Health Check'
+      }),
+      2500,
+      'Firestore write probe'
+    );
     canWrite = true;
   } catch (err: any) {
     probeError = err.message || String(err);
@@ -252,7 +263,7 @@ export async function testFirestoreConnection(): Promise<FirestoreProbeResult> {
   // 2. Read Probe
   if (canWrite) {
     try {
-      const snap = await probeRef.get();
+      const snap = await withTimeout(probeRef.get(), 2000, 'Firestore read probe');
       canRead = snap.exists;
       // Clean up test document immediately
       await probeRef.delete().catch(() => {});
@@ -262,7 +273,7 @@ export async function testFirestoreConnection(): Promise<FirestoreProbeResult> {
   } else {
     // Attempt read on systemConfig to see if read access is permitted
     try {
-      const snap = await adminDb.collection('systemConfig').doc('config_1').get();
+      const snap = await withTimeout(adminDb.collection('systemConfig').doc('config_1').get(), 2000, 'Firestore fallback read');
       canRead = snap.exists;
     } catch (err: any) {
       probeError = err.message || String(err);

@@ -105,6 +105,25 @@ export class FoodDatabase {
         }
       }
 
+      // Serverless cold-start bootstrap: copy/load bundled seed file to /tmp
+      const bundledSeedFile = path.join(process.cwd(), 'tumpang_food_db.json');
+      if (FOOD_DB_FILE !== bundledSeedFile && fs.existsSync(bundledSeedFile)) {
+        try {
+          const seedContent = fs.readFileSync(bundledSeedFile, 'utf-8');
+          if (seedContent && seedContent.trim().length > 10) {
+            this.data = JSON.parse(seedContent);
+            this.ensureStructure();
+            this.migratePasswords();
+            this.save();
+            this.createBackup();
+            console.log('[TumpangFood DB] Successfully bootstrapped serverless database from bundled tumpang_food_db.json');
+            return;
+          }
+        } catch (e: any) {
+          console.warn('[TumpangFood DB] Failed reading bundled seed database:', e.message);
+        }
+      }
+
       // Fallback 1: Try backup snapshot
       if (fs.existsSync(backupPath)) {
         console.warn('[TumpangFood DB] Primary database corrupted or empty. Recovering from backup snapshot...');
@@ -279,11 +298,11 @@ export class FoodDatabase {
       return;
     }
 
-    if (foodConfig.isProduction) {
-      const probe = await testFirestoreConnection();
-      if (!probe.connected) {
-        throw new Error(`[Produksi] Koneksi ke database Firestore "${foodConfig.databaseId}" pada proyek "${probe.projectId}" gagal (${probe.error}). Fallback ke JSON lokal dinonaktifkan pada lingkungan produksi.`);
-      }
+    const probe = await testFirestoreConnection();
+    if (!probe.connected) {
+      console.warn(`[TumpangFood DB] Firestore Cloud belum terhubung (${probe.diagnosticReason}: ${probe.error || probe.diagnosticDetail}). Melewati sinkronisasi remote koleksi.`);
+      this.isInitialized = true;
+      return;
     }
 
     this.isInitialized = true;

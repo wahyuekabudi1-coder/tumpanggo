@@ -1,11 +1,9 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- * 
- * Vercel Serverless Function Entry Point for Tumpang Food API
- * Directly exports the Express application without Vite or development server dependencies.
- */
+import type { IncomingMessage, ServerResponse } from 'http';
+import { app } from './_app.cjs';
 
-import { app } from '../src/server/app';
+export default function handler(req: IncomingMessage, res: ServerResponse) {
+  return app(req, res);
+}
 
-export default app;
+export { app };
+
