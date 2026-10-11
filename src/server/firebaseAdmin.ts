@@ -17,7 +17,7 @@ import { foodConfig } from './config';
 let adminApp: App | null = null;
 let adminDb: Firestore | null = null;
 let isConfiguredWithServiceAccount = false;
-let activeProjectId = 'gen-lang-client-0238078208';
+let activeProjectId = 'tumpanggo-70479';
 let activeClientEmailMasked: string | null = null;
 
 export function getActiveProjectId(): string {
@@ -58,7 +58,7 @@ export function initFirebaseAdmin(serviceAccountOverride?: string): { success: b
       }
     }
 
-    projectId = projectId || 'gen-lang-client-0238078208';
+    projectId = projectId || 'tumpanggo-70479';
     activeProjectId = projectId;
 
     const rawInput = (serviceAccountOverride || process.env.FIREBASE_SERVICE_ACCOUNT_KEY || process.env.GOOGLE_SERVICE_ACCOUNT_KEY || '').trim();
@@ -161,10 +161,14 @@ export function initFirebaseAdmin(serviceAccountOverride?: string): { success: b
       adminApp = currentApps[0];
     }
 
-    // Initialize Firestore targeting the dedicated isolated database ID
+    // Initialize Firestore targeting the configured database ID
     const getFirestoreFn = getFirestore || (admin as any).firestore;
     if (typeof getFirestoreFn === 'function' && adminApp) {
-      adminDb = getFirestoreFn(adminApp, foodConfig.databaseId);
+      if (!foodConfig.databaseId || foodConfig.databaseId === '(default)') {
+        adminDb = getFirestoreFn(adminApp);
+      } else {
+        adminDb = getFirestoreFn(adminApp, foodConfig.databaseId);
+      }
     }
 
     console.log(`[TumpangFood Admin] Firebase Admin SDK initialized for database "${foodConfig.databaseId}" on project "${projectId}".`);

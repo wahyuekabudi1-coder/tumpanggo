@@ -78,7 +78,17 @@ function validateProductionEnvironment() {
   if (!adminPassword || adminPassword.trim().length < 8) {
     errors.push("FOOD_ADMIN_PASSWORD wajib disetel dengan minimal 8 karakter.");
   }
-  const projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCP_PROJECT;
+  let projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCP_PROJECT;
+  if (!projectId) {
+    try {
+      const configPath = import_path.default.join(process.cwd(), "firebase-applet-config.json");
+      if (import_fs.default.existsSync(configPath)) {
+        const raw = JSON.parse(import_fs.default.readFileSync(configPath, "utf-8"));
+        projectId = raw.projectId;
+      }
+    } catch {
+    }
+  }
   if (!projectId || projectId.trim().length === 0) {
     errors.push("FIREBASE_PROJECT_ID wajib disetel pada lingkungan produksi.");
   }
@@ -134,7 +144,23 @@ var foodConfig = {
   host: "0.0.0.0",
   isServerless,
   // Database settings
-  databaseId: process.env.FOOD_DATABASE_ID || "ai-studio-tumpangfood-99caef89-a69c-4fe1-80be-2c79f3dcb85c",
+  databaseId: (() => {
+    const rawEnv = (process.env.FOOD_DATABASE_ID || "").trim();
+    if (rawEnv && rawEnv !== "ai-studio-tumpangfood-99caef89-a69c-4fe1-80be-2c79f3dcb85c") {
+      return rawEnv;
+    }
+    try {
+      const configPath = import_path.default.join(process.cwd(), "firebase-applet-config.json");
+      if (import_fs.default.existsSync(configPath)) {
+        const rawConfig = JSON.parse(import_fs.default.readFileSync(configPath, "utf-8"));
+        if (rawConfig.firestoreDatabaseId && rawConfig.firestoreDatabaseId !== "ai-studio-tumpangfood-99caef89-a69c-4fe1-80be-2c79f3dcb85c") {
+          return rawConfig.firestoreDatabaseId;
+        }
+      }
+    } catch {
+    }
+    return "(default)";
+  })(),
   localDbFile,
   legacyDbFile: import_path.default.join(process.cwd(), "tumpang_db.json"),
   // Security & Authentication
@@ -440,7 +466,7 @@ var import_firestore = require("firebase-admin/firestore");
 var adminApp = null;
 var adminDb = null;
 var isConfiguredWithServiceAccount = false;
-var activeProjectId = "gen-lang-client-0238078208";
+var activeProjectId = "tumpanggo-70479";
 var activeClientEmailMasked = null;
 function removeUndefinedFields(obj) {
   if (obj === null || typeof obj !== "object") return obj;
@@ -466,7 +492,7 @@ function initFirebaseAdmin(serviceAccountOverride) {
       } catch {
       }
     }
-    projectId = projectId || "gen-lang-client-0238078208";
+    projectId = projectId || "tumpanggo-70479";
     activeProjectId = projectId;
     const rawInput = (serviceAccountOverride || process.env.FIREBASE_SERVICE_ACCOUNT_KEY || process.env.GOOGLE_SERVICE_ACCOUNT_KEY || "").trim();
     let credentialOption = void 0;
@@ -557,7 +583,11 @@ function initFirebaseAdmin(serviceAccountOverride) {
     }
     const getFirestoreFn = import_firestore.getFirestore || admin.firestore;
     if (typeof getFirestoreFn === "function" && adminApp) {
-      adminDb = getFirestoreFn(adminApp, foodConfig.databaseId);
+      if (!foodConfig.databaseId || foodConfig.databaseId === "(default)") {
+        adminDb = getFirestoreFn(adminApp);
+      } else {
+        adminDb = getFirestoreFn(adminApp, foodConfig.databaseId);
+      }
     }
     console.log(`[TumpangFood Admin] Firebase Admin SDK initialized for database "${foodConfig.databaseId}" on project "${projectId}".`);
     return { success: true };

@@ -51,7 +51,16 @@ export function validateProductionEnvironment(): { isValid: boolean; errors: str
     errors.push('FOOD_ADMIN_PASSWORD wajib disetel dengan minimal 8 karakter.');
   }
 
-  const projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCP_PROJECT;
+  let projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCP_PROJECT;
+  if (!projectId) {
+    try {
+      const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
+      if (fs.existsSync(configPath)) {
+        const raw = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+        projectId = raw.projectId;
+      }
+    } catch {}
+  }
   if (!projectId || projectId.trim().length === 0) {
     errors.push('FIREBASE_PROJECT_ID wajib disetel pada lingkungan produksi.');
   }
@@ -115,7 +124,22 @@ export const foodConfig = {
   isServerless,
 
   // Database settings
-  databaseId: process.env.FOOD_DATABASE_ID || 'ai-studio-tumpangfood-99caef89-a69c-4fe1-80be-2c79f3dcb85c',
+  databaseId: (() => {
+    const rawEnv = (process.env.FOOD_DATABASE_ID || '').trim();
+    if (rawEnv && rawEnv !== 'ai-studio-tumpangfood-99caef89-a69c-4fe1-80be-2c79f3dcb85c') {
+      return rawEnv;
+    }
+    try {
+      const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
+      if (fs.existsSync(configPath)) {
+        const rawConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+        if (rawConfig.firestoreDatabaseId && rawConfig.firestoreDatabaseId !== 'ai-studio-tumpangfood-99caef89-a69c-4fe1-80be-2c79f3dcb85c') {
+          return rawConfig.firestoreDatabaseId;
+        }
+      }
+    } catch {}
+    return '(default)';
+  })(),
   localDbFile,
   legacyDbFile: path.join(process.cwd(), 'tumpang_db.json'),
   

@@ -1,10 +1,10 @@
 {
-  "projectId": "gen-lang-client-0238078208",
+  "projectId": "tumpanggo-70479",
   "appId": "1:593729569361:web:8e7861ea7c826537172e70",
   "apiKey": "AIzaSyDcytVgNZsPVmGutQeh-0US42zTlFciivc",
-  "authDomain": "gen-lang-client-0238078208.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-tumpangfood-99caef89-a69c-4fe1-80be-2c79f3dcb85c",
-  "storageBucket": "gen-lang-client-0238078208.firebasestorage.app",
+  "authDomain": "tumpanggo-70479.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "tumpanggo-70479.firebasestorage.app",
   "messagingSenderId": "593729569361",
   "measurementId": ""
 }
