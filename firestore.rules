@@ -1,8 +1,90 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Global default deny
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'tumpanggo@gmail.com' ||
+        request.auth.token.email == 'sawahjayagroup@gmail.com' ||
+        request.auth.token.email == 'sawahjayatrans@gmail.com' ||
+        request.auth.token.email == 'sharaaulia390@gmail.com'
+      );
+    }
+
+    // 1. System Configuration: Public read for fee estimates & QRIS, Admin only write
+    match /systemConfig/{configId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 2. Merchants: Public read for browsing, owner or admin for updates
+    match /merchants/{merchantId} {
+      allow read: if true;
+      allow create: if isSignedIn() || isAdmin();
+      allow update: if isAdmin() || (isSignedIn() && (resource.data.email == request.auth.token.email || resource.data.id == request.auth.uid));
+      allow delete: if isAdmin();
+    }
+
+    // 3. Menu Categories: Public read, merchant/admin write
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isSignedIn() || isAdmin();
+    }
+
+    // 4. Menu Items: Public read, merchant/admin write
+    match /menuItems/{menuItemId} {
+      allow read: if true;
+      allow write: if isSignedIn() || isAdmin();
+    }
+
+    // 5. Drivers: Authenticated read, driver self or admin write
+    match /drivers/{driverId} {
+      allow read: if isSignedIn() || isAdmin();
+      allow write: if isAdmin() || (isSignedIn() && resource.data.id == request.auth.uid);
+    }
+
+    // 6. Orders: Customer trackable, protected deletion
+    match /orders/{orderId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if isAdmin();
+    }
+
+    // 7. Settlements: Merchant or admin read, Admin only write
+    match /settlements/{settlementId} {
+      allow read: if isSignedIn() || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // 8. Audit Logs: Admin read, append-only, strictly immutable
+    match /auditLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    // 9. Contract Licenses: Read allowed, Admin write
+    match /licenses/{licenseKey} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 10. Partner Registrations: Public submit, Admin process
+    match /partnerRegistrations/{registrationId} {
+      allow read: if isAdmin();
+      allow create: if true;
+      allow update, delete: if isAdmin();
     }
   }
 }

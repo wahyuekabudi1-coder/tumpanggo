@@ -145,17 +145,6 @@ export default function PortalLogin({ role, targetMerchantId, targetDriverId, in
     setError('');
     setSuccessMsg('');
 
-    // Instant bypass for Admin in Demo mode
-    if (role === 'ADMIN') {
-      const userEmail = emailInput.trim() || 'tumpanggo@gmail.com';
-      localStorage.setItem('tumpang_auth_email', userEmail);
-      setSuccessMsg('Login Administrator Berhasil! Mengalihkan...');
-      setTimeout(() => {
-        onSuccess(userEmail, 'admin');
-      }, 300);
-      return;
-    }
-
     if (!emailInput || !passwordInput) {
       setError('Mohon isi alamat email / no. telepon dan kata sandi Anda.');
       return;
@@ -178,6 +167,7 @@ export default function PortalLogin({ role, targetMerchantId, targetDriverId, in
       if (res.ok && data.token) {
         const userEmail = emailInput.trim();
         localStorage.setItem('tumpang_auth_email', userEmail);
+        localStorage.setItem('tumpang_auth_token', data.token);
         setSuccessMsg('Login Berhasil! Mengalihkan...');
         setTimeout(() => {
           onSuccess(userEmail, data.user?.id);
@@ -425,13 +415,35 @@ export default function PortalLogin({ role, targetMerchantId, targetDriverId, in
                   </p>
                   <button
                     type="button"
-                    onClick={() => {
-                      const userEmail = 'tumpanggo@gmail.com';
-                      localStorage.setItem('tumpang_auth_email', userEmail);
-                      setSuccessMsg('Login Administrator Berhasil! Mengalihkan...');
-                      setTimeout(() => {
-                        onSuccess(userEmail, 'admin');
-                      }, 300);
+                    onClick={async () => {
+                      setLoading(true);
+                      try {
+                        const res = await fetch('/api/login', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            username: 'tumpanggo@gmail.com',
+                            password: 'admin',
+                            role: 'ADMIN'
+                          })
+                        });
+                        const data = await res.json();
+                        if (res.ok && data.token) {
+                          const userEmail = 'tumpanggo@gmail.com';
+                          localStorage.setItem('tumpang_auth_email', userEmail);
+                          localStorage.setItem('tumpang_auth_token', data.token);
+                          setSuccessMsg('Login Administrator Berhasil! Mengalihkan...');
+                          setTimeout(() => {
+                            onSuccess(userEmail, 'admin');
+                          }, 300);
+                        } else {
+                          setError(data.error || 'Gagal login administrator.');
+                        }
+                      } catch {
+                        setError('Gagal terhubung ke server.');
+                      } finally {
+                        setLoading(false);
+                      }
                     }}
                     className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-extrabold rounded-xl transition-all shadow-sm text-xs flex items-center justify-center gap-2 cursor-pointer active:scale-95"
                   >
